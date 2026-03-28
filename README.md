@@ -7,9 +7,9 @@
 - Docker Desktop (or Docker Engine) installed and running
 - From project root (`SpendWiseApp/`)
 
-### Option A — Full stack (MySQL + Nginx + Backend + Frontend)
+### Option A — Full stack (PostgreSQL + Nginx + Backend + Frontend)
 
-Use this for local development with a local MySQL container.
+Use this for local development with a local Postgres container.
 
 ```bash
 docker compose -f docker-compose.yml up --build
@@ -17,7 +17,7 @@ docker compose -f docker-compose.yml up --build
 
 - App (via Nginx): `http://localhost:3000`
 - Backend (direct): `http://localhost:5001`
-- MySQL (from host tools): `127.0.0.1:33061`
+- PostgreSQL (from host tools): `127.0.0.1:54321`
 
 Stop:
 
@@ -31,9 +31,9 @@ Reset everything (including DB data):
 docker compose -f docker-compose.yml down -v
 ```
 
-### Option B — App only (no MySQL)
+### Option B — App only (no Postgres in Compose)
 
-Use this when your database is outside Docker (e.g. RDS, a remote MySQL, etc.).
+Use this when your database is outside Docker (e.g. RDS PostgreSQL, a remote Postgres, etc.).
 
 ```bash
 docker compose -f docker-compose.app.yml up --build
@@ -44,40 +44,35 @@ docker compose -f docker-compose.app.yml up --build
 
 ## Database notes
 
-### Why `33061:3306`?
+### Why `54321:5432`?
 
-In `docker-compose.yml`, MySQL runs on port `3306` inside the container, but is mapped to `33061` on your machine:
+In `docker-compose.yml`, Postgres listens on port `5432` inside the container, but is mapped to `54321` on your machine:
 
-- **container**: `3306`
-- **host**: `33061`
+- **container**: `5432`
+- **host**: `54321`
 
-This avoids conflicts if your laptop already uses port `3306`.
+This avoids conflicts if your laptop already runs Postgres on `5432`.
 
-### Connect with DBeaver (local MySQL container)
+### Connect with DBeaver (local Postgres container)
 
 When using **Option A** (`docker-compose.yml`):
 
 - **Host**: `127.0.0.1`
-- **Port**: `33061`
+- **Port**: `54321`
 - **Database**: `spendwise`
 - **Username**: `admin`
 - **Password**: `letmein12345`
 
-If you see `Public Key Retrieval is not allowed` in DBeaver, set:
-
-- `allowPublicKeyRetrieval=true`
-- `useSSL=false`
-
-(or set these in DBeaver Driver Properties)
+SSL: usually disabled for local Docker (`sslmode=disable` or off in DBeaver).
 
 ### Backend env files (DB inside Docker vs outside)
 
 - **`docker-compose-env/backend.env`** (used by `docker-compose.yml`)
   - For DB inside Docker Compose
-  - `DB_HOST=mysql`
+  - `DB_HOST=postgres`
 - **`docker-compose-env/backend.app.env`** (used by `docker-compose.app.yml`)
   - For DB outside Docker Compose (example: RDS)
-  - Set `DB_HOST=<rds-endpoint>` (do not use `localhost` unless DB is in the same container)
+  - Set `DB_HOST=<rds-endpoint>` (do not use `localhost` from inside a container unless you use `host.docker.internal` on Docker Desktop)
 
 ## Common issues
 
@@ -91,4 +86,20 @@ Fix: change the host mapping in compose, e.g.:
 
 (`docker-compose.yml` already maps backend to `5001:5000`.)
 
-# spendwise
+### Switched from MySQL — clean up old Docker resources
+
+If you previously ran this stack with MySQL, stop everything and drop Compose volumes so only the current Postgres setup remains:
+
+```bash
+docker compose -f docker-compose.yml down --remove-orphans -v
+docker compose -f docker-compose.yml up --build
+```
+
+Optional: remove unused MySQL images after you no longer need them:
+
+```bash
+docker images | grep -E 'mysql|mariadb'
+docker rmi <image_id>
+```
+
+Orphan volumes from old projects can be listed with `docker volume ls` and removed with `docker volume rm <name>` if you are sure they are unused.

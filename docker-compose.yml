@@ -1,13 +1,13 @@
 version: "3"
 services:
-  mysql:
+  postgres:
     env_file: "./docker-compose-env/database.env"
-    image: mysql:8.0.39
+    image: postgres:16-alpine
     ports:
-      - "33061:3306"
-    command: --init-file /data/application/init.sql
+      - "54321:5432"
     volumes:
-      - ./database/init.sql:/data/application/init.sql
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/01-init.sql
   nginx:
     restart: always
     depends_on:
@@ -23,7 +23,7 @@ services:
       - path: "./docker-compose-env/database.env"
       - path: "./docker-compose-env/backend.env"
     depends_on:
-      - mysql
+      - postgres
     build:
       dockerfile: Dockerfile
       context: backend
@@ -40,3 +40,6 @@ services:
     volumes:
       - /app/node_modules
       - ./frontend:/app
+
+volumes:
+  postgres_data:

@@ -1,0 +1,2 @@
+-- SpendWiseApp: runs once on first Postgres init (docker-entrypoint-initdb.d).
+-- Add schema / seed SQL here, or use migrations from the backend.
