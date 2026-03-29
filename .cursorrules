@@ -1,0 +1,27 @@
+# SpendWiseApp — Cursor agent rules
+
+## What this is
+
+**SpendWiseApp** is an expense-management product: **NestJS** backend (`backend/`), **Next.js** frontend (`frontend/`), **PostgreSQL**, **Nginx**, **Docker Compose**. Prefer `README.md` for run commands, ports, env files, and DB connection details.
+
+## How rules stack (read in order)
+
+1. **This file** — Repo-wide defaults for every coding task.
+2. **`docs/workflow.md`** — How to combine these rules with `docs/commands/` playbooks and feature docs.
+3. **Subtree guides** — e.g. `frontend/AGENTS.md` for anything under `frontend/` (Next.js in this repo may differ from generic training; use `node_modules/next/dist/docs/` when changing Next APIs or app structure).
+4. **`docs/commands/*.md`** — Use when the user or task matches a playbook (plan, review, docs, brief); they define deliverables, not day-to-day style.
+
+If anything conflicts, **this file and subtree guides beat generic habits**; **implemented code beats outdated plans** when writing docs.
+
+## Coding discipline
+
+- **Scope**: Implement only what the user asked; avoid drive-by refactors or unrelated files.
+- **Consistency**: Match naming, imports, and patterns in the code you touch; extend existing modules before adding parallel abstractions.
+- **Types**: Prefer explicit TypeScript types; avoid `any` for domain data (money, IDs, transactions).
+- **Secrets**: Do not hardcode credentials; align with `docker-compose-env/` and env conventions in `README.md`.
+- **Uncertainty**: Ask a short clarifying question instead of inventing APIs, routes, or product behavior.
+
+## Stack reminders
+
+- **Frontend**: Next.js (App Router), React, TypeScript, Tailwind — see `frontend/package.json` for versions.
+- **Backend**: NestJS — follow existing `backend/src/` layout (modules, controllers, services).
