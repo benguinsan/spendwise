@@ -2,12 +2,22 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Install dependencies first for better layer caching.
+# Cài deps
 COPY package*.json ./
-RUN npm install
+RUN npm ci
 
+# Copy prisma schema
+COPY prisma ./prisma
+
+# Generate Prisma Client (set dummy DATABASE_URL for build phase)
+RUN DATABASE_URL="postgresql://user:password@localhost:5432/dummy" npx prisma generate
+
+# Copy source code
 COPY . .
+
+# Build project
+RUN npm run build
 
 EXPOSE 5000
 
-CMD ["npm", "run", "start:dev"]
+CMD ["node", "dist/src/main.js"]

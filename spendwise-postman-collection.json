@@ -1,0 +1,1499 @@
+{
+  "info": {
+    "name": "Spendwise API Collection",
+    "description": "Complete API collection for Spendwise Backend - Financial Management System",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "1.0.0"
+  },
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"password123\",\n  \"name\": \"John Doe\"\n}"
+            },
+            "url": {
+              "raw": "{{api_base_url}}/auth/register",
+              "host": ["{{api_base_url}}"],
+              "path": ["auth", "register"]
+            },
+            "description": "Register a new user account"
+          }
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{api_base_url}}/auth/login",
+              "host": ["{{api_base_url}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Login and get JWT tokens"
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refresh_token}}\"\n}"
+            },
+            "url": {
+              "raw": "{{api_base_url}}/auth/refresh",
+              "host": ["{{api_base_url}}"],
+              "path": ["auth", "refresh"]
+            },
+            "description": "Refresh access token using refresh token"
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{api_base_url}}/auth/logout",
+              "host": ["{{api_base_url}}"],
+              "path": ["auth", "logout"]
+            },
+            "description": "Logout user session"
+          }
+        },
+        {
+          "name": "Get Current User Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{api_base_url}}/auth/me",
+              "host": ["{{api_base_url}}"],
+              "path": ["auth", "me"]
+            },
+            "description": "Get current authenticated user profile"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Create User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"newuser@example.com\",\n  \"password\": \"password123\",\n  \"name\": \"New User\"\n}"
+            },
+            "url": {
+              "raw": "{{api_base_url}}/users",
+              "host": ["{{api_base_url}}"],
+              "path": ["users"]
+            },
+            "description": "Create a new user"
+          }
+        },
+        {
+          "name": "Get All Users",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_base_url}}/users?skip=0&take=10",
+              "host": ["{{api_base_url}}"],
+              "path": ["users"],
+              "query": [
+                {
+                  "key": "skip",
+                  "value": "0",
+                  "description": "Number of records to skip"
+                },
+                {
+                  "key": "take",
+                  "value": "10",
+                  "description": "Number of records to take (limit)"
+                }
+              ]
+            },
+            "description": "Get all users with pagination"
+          }
+        },
+        {
+          "name": "Get User by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_base_url}}/users/{{user_id}}",
+              "host": ["{{api_base_url}}"],
+              "path": ["users", "{{user_id}}"]
+            },
+            "description": "Get specific user by ID"
+          }
+        },
+        {
+          "name": "Update User",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Name\",\n  \"email\": \"newemail@example.com\",\n  \"password\": \"newpassword123\"\n}"
+            },
+            "url": {
+              "raw": "{{api_base_url}}/users/{{user_id}}",
+              "host": ["{{api_base_url}}"],
+              "path": ["users", "{{user_id}}"]
+            },
+            "description": "Update user information"
+          }
+        },
+        {
+          "name": "Delete User",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{api_base_url}}/users/{{user_id}}",
+              "host": ["{{api_base_url}}"],
+              "path": ["users", "{{user_id}}"]
+            },
+            "description": "Delete a user"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Wallets",
+      "item": [
+        {
+          "name": "Create Wallet",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"My Wallet\",\n  \"balance\": 1000000,\n  \"currency\": \"VND\",\n  \"userId\": \"{{user_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{api_base_url}}/wallets",
+              "host": ["{{api_base_url}}"],
+              "path": ["wallets"]
+            },
+            "description": "Create a new wallet for user"
+          }
+        },
+        {
+          "name": "Get All Wallets",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_base_url}}/wallets?userId={{user_id}}&skip=0&take=10",
+              "host": ["{{api_base_url}}"],
+              "path": ["wallets"],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "{{user_id}}"
+                },
+                {
+                  "key": "skip",
+                  "value": "0"
+                },
+                {
+                  "key": "take",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "Get all wallets with pagination"
+          }
+        },
+        {
+          "name": "Get Wallets by User",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_base_url}}/wallets/user/{{user_id}}",
+              "host": ["{{api_base_url}}"],
+              "path": ["wallets", "user", "{{user_id}}"]
+            },
+            "description": "Get all wallets for a specific user"
+          }
+        },
+        {
+          "name": "Get Wallet by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_base_url}}/wallets/{{wallet_id}}",
+              "host": ["{{api_base_url}}"],
+              "path": ["wallets", "{{wallet_id}}"]
+            },
+            "description": "Get specific wallet details"
+          }
+        },
+        {
+          "name": "Update Wallet",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Wallet Name\",\n  \"balance\": 5000000,\n  \"currency\": \"VND\"\n}"
+            },
+            "url": {
+              "raw": "{{api_base_url}}/wallets/{{wallet_id}}",
+              "host": ["{{api_base_url}}"],
+              "path": ["wallets", "{{wallet_id}}"]
+            },
+            "description": "Update wallet details"
+          }
+        },
+        {
+          "name": "Delete Wallet",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{api_base_url}}/wallets/{{wallet_id}}",
+              "host": ["{{api_base_url}}"],
+              "path": ["wallets", "{{wallet_id}}"]
+            },
+            "description": "Delete a wallet"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Transactions",
+      "item": [
+        {
+          "name": "Create Income Transaction",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 5000000,\n  \"type\": \"INCOME\",\n  \"note\": \"Salary payment\",\n  \"date\": \"2026-04-02T10:00:00Z\",\n  \"userId\": \"{{user_id}}\",\n  \"walletId\": \"{{wallet_id}}\",\n  \"categoryId\": \"{{category_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{api_base_url}}/transactions",
+              "host": ["{{api_base_url}}"],
+              "path": ["transactions"]
+            },
+            "description": "Create an income transaction"
+          }
+        },
+        {
+          "name": "Create Expense Transaction",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 500000,\n  \"type\": \"EXPENSE\",\n  \"note\": \"Food and drinks\",\n  \"date\": \"2026-04-02T12:00:00Z\",\n  \"userId\": \"{{user_id}}\",\n  \"walletId\": \"{{wallet_id}}\",\n  \"categoryId\": \"{{category_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{api_base_url}}/transactions",
+              "host": ["{{api_base_url}}"],
+              "path": ["transactions"]
+            },
+            "description": "Create an expense transaction"
+          }
+        },
+        {
+          "name": "Create Transfer Transaction",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 1000000,\n  \"type\": \"TRANSFER\",\n  \"note\": \"Transfer to savings\",\n  \"date\": \"2026-04-02T14:00:00Z\",\n  \"userId\": \"{{user_id}}\",\n  \"fromWalletId\": \"{{wallet_id_from}}\",\n  \"toWalletId\": \"{{wallet_id_to}}\"\n}"
+            },
+            "url": {
+              "raw": "{{api_base_url}}/transactions",
+              "host": ["{{api_base_url}}"],
+              "path": ["transactions"]
+            },
+            "description": "Create a transfer between two wallets"
+          }
+        },
+        {
+          "name": "Get All Transactions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_base_url}}/transactions?userId={{user_id}}&skip=0&take=10",
+              "host": ["{{api_base_url}}"],
+              "path": ["transactions"],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "{{user_id}}"
+                },
+                {
+                  "key": "walletId",
+                  "value": "{{wallet_id}}"
+                },
+                {
+                  "key": "skip",
+                  "value": "0"
+                },
+                {
+                  "key": "take",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "Get all transactions with optional filters"
+          }
+        },
+        {
+          "name": "Get Transactions by User",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_base_url}}/transactions/user/{{user_id}}?limit=20",
+              "host": ["{{api_base_url}}"],
+              "path": ["transactions", "user", "{{user_id}}"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Get all transactions for a specific user"
+          }
+        },
+        {
+          "name": "Get Transactions by Wallet",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_base_url}}/transactions/wallet/{{wallet_id}}?limit=20",
+              "host": ["{{api_base_url}}"],
+              "path": ["transactions", "wallet", "{{wallet_id}}"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Get all transactions for a specific wallet"
+          }
+        },
+        {
+          "name": "Get Transaction by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_base_url}}/transactions/{{transaction_id}}",
+              "host": ["{{api_base_url}}"],
+              "path": ["transactions", "{{transaction_id}}"]
+            },
+            "description": "Get specific transaction details"
+          }
+        },
+        {
+          "name": "Update Transaction",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 600000,\n  \"note\": \"Updated expense\",\n  \"categoryId\": \"{{category_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{api_base_url}}/transactions/{{transaction_id}}",
+              "host": ["{{api_base_url}}"],
+              "path": ["transactions", "{{transaction_id}}"]
+            },
+            "description": "Update transaction details"
+          }
+        },
+        {
+          "name": "Delete Transaction",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{api_base_url}}/transactions/{{transaction_id}}",
+              "host": ["{{api_base_url}}"],
+              "path": ["transactions", "{{transaction_id}}"]
+            },
+            "description": "Delete a transaction"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Categories",
+      "item": [
+        {
+          "name": "Create Category",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Food & Dining\",\n  \"type\": \"EXPENSE\",\n  \"icon\": \"🍔\",\n  \"userId\": \"{{user_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{api_base_url}}/categories",
+              "host": ["{{api_base_url}}"],
+              "path": ["categories"]
+            },
+            "description": "Create a new category"
+          }
+        },
+        {
+          "name": "Get All Categories",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_base_url}}/categories?type=EXPENSE&skip=0&take=20",
+              "host": ["{{api_base_url}}"],
+              "path": ["categories"],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "EXPENSE",
+                  "description": "Filter by type (INCOME, EXPENSE, TRANSFER)"
+                },
+                {
+                  "key": "skip",
+                  "value": "0"
+                },
+                {
+                  "key": "take",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Get all categories with optional filter"
+          }
+        },
+        {
+          "name": "Get Categories by Type",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_base_url}}/categories/type/EXPENSE",
+              "host": ["{{api_base_url}}"],
+              "path": ["categories", "type", "EXPENSE"]
+            },
+            "description": "Get categories by transaction type"
+          }
+        },
+        {
+          "name": "Get Default Categories",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_base_url}}/categories/defaults",
+              "host": ["{{api_base_url}}"],
+              "path": ["categories", "defaults"]
+            },
+            "description": "Get system default categories"
+          }
+        },
+        {
+          "name": "Get Category by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_base_url}}/categories/{{category_id}}",
+              "host": ["{{api_base_url}}"],
+              "path": ["categories", "{{category_id}}"]
+            },
+            "description": "Get specific category details"
+          }
+        },
+        {
+          "name": "Update Category",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Food & Drinks\",\n  \"icon\": \"🍕\"\n}"
+            },
+            "url": {
+              "raw": "{{api_base_url}}/categories/{{category_id}}",
+              "host": ["{{api_base_url}}"],
+              "path": ["categories", "{{category_id}}"]
+            },
+            "description": "Update category information"
+          }
+        },
+        {
+          "name": "Delete Category",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{api_base_url}}/categories/{{category_id}}",
+              "host": ["{{api_base_url}}"],
+              "path": ["categories", "{{category_id}}"]
+            },
+            "description": "Delete a category"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tags",
+      "item": [
+        {
+          "name": "Create Tag",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"work\",\n  \"userId\": \"{{user_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{api_base_url}}/tags",
+              "host": ["{{api_base_url}}"],
+              "path": ["tags"]
+            },
+            "description": "Create a new tag"
+          }
+        },
+        {
+          "name": "Get All Tags",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_base_url}}/tags?userId={{user_id}}&skip=0&take=50",
+              "host": ["{{api_base_url}}"],
+              "path": ["tags"],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "{{user_id}}"
+                },
+                {
+                  "key": "skip",
+                  "value": "0"
+                },
+                {
+                  "key": "take",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "Get all tags for a user"
+          }
+        },
+        {
+          "name": "Get Tag by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_base_url}}/tags/{{tag_id}}?userId={{user_id}}",
+              "host": ["{{api_base_url}}"],
+              "path": ["tags", "{{tag_id}}"],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "{{user_id}}"
+                }
+              ]
+            },
+            "description": "Get specific tag details"
+          }
+        },
+        {
+          "name": "Get Tag Transactions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_base_url}}/tags/{{tag_id}}/transactions?userId={{user_id}}&skip=0&take=20",
+              "host": ["{{api_base_url}}"],
+              "path": ["tags", "{{tag_id}}", "transactions"],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "{{user_id}}"
+                },
+                {
+                  "key": "skip",
+                  "value": "0"
+                },
+                {
+                  "key": "take",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Get all transactions with a specific tag"
+          }
+        },
+        {
+          "name": "Get Tag Analytics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_base_url}}/tags/{{tag_id}}/analytics?userId={{user_id}}",
+              "host": ["{{api_base_url}}"],
+              "path": ["tags", "{{tag_id}}", "analytics"],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "{{user_id}}"
+                }
+              ]
+            },
+            "description": "Get analytics for a tag"
+          }
+        },
+        {
+          "name": "Update Tag",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"work-related\"\n}"
+            },
+            "url": {
+              "raw": "{{api_base_url}}/tags/{{tag_id}}?userId={{user_id}}",
+              "host": ["{{api_base_url}}"],
+              "path": ["tags", "{{tag_id}}"],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "{{user_id}}"
+                }
+              ]
+            },
+            "description": "Update tag information"
+          }
+        },
+        {
+          "name": "Add Tag to Transaction",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{api_base_url}}/tags/{{tag_id}}/transactions/{{transaction_id}}?userId={{user_id}}",
+              "host": ["{{api_base_url}}"],
+              "path": ["tags", "{{tag_id}}", "transactions", "{{transaction_id}}"],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "{{user_id}}"
+                }
+              ]
+            },
+            "description": "Add a tag to a transaction"
+          }
+        },
+        {
+          "name": "Remove Tag from Transaction",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{api_base_url}}/tags/{{tag_id}}/transactions/{{transaction_id}}?userId={{user_id}}",
+              "host": ["{{api_base_url}}"],
+              "path": ["tags", "{{tag_id}}", "transactions", "{{transaction_id}}"],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "{{user_id}}"
+                }
+              ]
+            },
+            "description": "Remove a tag from a transaction"
+          }
+        },
+        {
+          "name": "Delete Tag",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{api_base_url}}/tags/{{tag_id}}?userId={{user_id}}",
+              "host": ["{{api_base_url}}"],
+              "path": ["tags", "{{tag_id}}"],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "{{user_id}}"
+                }
+              ]
+            },
+            "description": "Delete a tag"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Goals",
+      "item": [
+        {
+          "name": "Create Goal",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Save for vacation\",\n  \"target\": 50000000,\n  \"current\": 0,\n  \"deadline\": \"2026-12-31T23:59:59Z\",\n  \"userId\": \"{{user_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{api_base_url}}/goals",
+              "host": ["{{api_base_url}}"],
+              "path": ["goals"]
+            },
+            "description": "Create a new savings goal"
+          }
+        },
+        {
+          "name": "Get All Goals",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_base_url}}/goals?userId={{user_id}}&skip=0&take=10",
+              "host": ["{{api_base_url}}"],
+              "path": ["goals"],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "{{user_id}}"
+                },
+                {
+                  "key": "skip",
+                  "value": "0"
+                },
+                {
+                  "key": "take",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "Get all goals for a user"
+          }
+        },
+        {
+          "name": "Get Goals Summary",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_base_url}}/goals/summary/{{user_id}}",
+              "host": ["{{api_base_url}}"],
+              "path": ["goals", "summary", "{{user_id}}"]
+            },
+            "description": "Get summary of all goals"
+          }
+        },
+        {
+          "name": "Get Goal by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_base_url}}/goals/{{goal_id}}?userId={{user_id}}",
+              "host": ["{{api_base_url}}"],
+              "path": ["goals", "{{goal_id}}"],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "{{user_id}}"
+                }
+              ]
+            },
+            "description": "Get specific goal details"
+          }
+        },
+        {
+          "name": "Update Goal",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Save for vacation (updated)\",\n  \"target\": 60000000,\n  \"current\": 15000000,\n  \"deadline\": \"2026-12-31T23:59:59Z\"\n}"
+            },
+            "url": {
+              "raw": "{{api_base_url}}/goals/{{goal_id}}?userId={{user_id}}",
+              "host": ["{{api_base_url}}"],
+              "path": ["goals", "{{goal_id}}"],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "{{user_id}}"
+                }
+              ]
+            },
+            "description": "Update goal information"
+          }
+        },
+        {
+          "name": "Add Progress to Goal",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 5000000\n}"
+            },
+            "url": {
+              "raw": "{{api_base_url}}/goals/{{goal_id}}/progress?userId={{user_id}}",
+              "host": ["{{api_base_url}}"],
+              "path": ["goals", "{{goal_id}}", "progress"],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "{{user_id}}"
+                }
+              ]
+            },
+            "description": "Add progress to a goal"
+          }
+        },
+        {
+          "name": "Delete Goal",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{api_base_url}}/goals/{{goal_id}}?userId={{user_id}}",
+              "host": ["{{api_base_url}}"],
+              "path": ["goals", "{{goal_id}}"],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "{{user_id}}"
+                }
+              ]
+            },
+            "description": "Delete a goal"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Budgets",
+      "item": [
+        {
+          "name": "Create Budget",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 10000000,\n  \"month\": 4,\n  \"year\": 2026,\n  \"userId\": \"{{user_id}}\",\n  \"categoryId\": \"{{category_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{api_base_url}}/budgets",
+              "host": ["{{api_base_url}}"],
+              "path": ["budgets"]
+            },
+            "description": "Create a budget for a category in a month"
+          }
+        },
+        {
+          "name": "Get All Budgets",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_base_url}}/budgets?userId={{user_id}}&skip=0&take=10",
+              "host": ["{{api_base_url}}"],
+              "path": ["budgets"],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "{{user_id}}"
+                },
+                {
+                  "key": "skip",
+                  "value": "0"
+                },
+                {
+                  "key": "take",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "Get all budgets with pagination"
+          }
+        },
+        {
+          "name": "Get Budgets by User",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_base_url}}/budgets/user/{{user_id}}?month=4&year=2026",
+              "host": ["{{api_base_url}}"],
+              "path": ["budgets", "user", "{{user_id}}"],
+              "query": [
+                {
+                  "key": "month",
+                  "value": "4"
+                },
+                {
+                  "key": "year",
+                  "value": "2026"
+                }
+              ]
+            },
+            "description": "Get budgets for user by month and year"
+          }
+        },
+        {
+          "name": "Get Budget by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_base_url}}/budgets/{{budget_id}}",
+              "host": ["{{api_base_url}}"],
+              "path": ["budgets", "{{budget_id}}"]
+            },
+            "description": "Get specific budget details"
+          }
+        },
+        {
+          "name": "Update Budget",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 12000000\n}"
+            },
+            "url": {
+              "raw": "{{api_base_url}}/budgets/{{budget_id}}",
+              "host": ["{{api_base_url}}"],
+              "path": ["budgets", "{{budget_id}}"]
+            },
+            "description": "Update budget amount"
+          }
+        },
+        {
+          "name": "Delete Budget",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{api_base_url}}/budgets/{{budget_id}}",
+              "host": ["{{api_base_url}}"],
+              "path": ["budgets", "{{budget_id}}"]
+            },
+            "description": "Delete a budget"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Recurring Transactions",
+      "item": [
+        {
+          "name": "Create Recurring Transaction",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 2000000,\n  \"type\": \"EXPENSE\",\n  \"interval\": \"MONTHLY\",\n  \"userId\": \"{{user_id}}\",\n  \"walletId\": \"{{wallet_id}}\",\n  \"categoryId\": \"{{category_id}}\",\n  \"note\": \"Monthly subscription\"\n}"
+            },
+            "url": {
+              "raw": "{{api_base_url}}/recurring-transactions",
+              "host": ["{{api_base_url}}"],
+              "path": ["recurring-transactions"]
+            },
+            "description": "Create a recurring transaction (DAILY, WEEKLY, MONTHLY, YEARLY)"
+          }
+        },
+        {
+          "name": "Get All Recurring Transactions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_base_url}}/recurring-transactions?userId={{user_id}}&skip=0&take=10",
+              "host": ["{{api_base_url}}"],
+              "path": ["recurring-transactions"],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "{{user_id}}"
+                },
+                {
+                  "key": "skip",
+                  "value": "0"
+                },
+                {
+                  "key": "take",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "Get all recurring transactions for a user"
+          }
+        },
+        {
+          "name": "Get Recurring Transaction by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_base_url}}/recurring-transactions/{{recurring_id}}?userId={{user_id}}",
+              "host": ["{{api_base_url}}"],
+              "path": ["recurring-transactions", "{{recurring_id}}"],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "{{user_id}}"
+                }
+              ]
+            },
+            "description": "Get specific recurring transaction details"
+          }
+        },
+        {
+          "name": "Get Next Executions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_base_url}}/recurring-transactions/{{recurring_id}}/next-executions?userId={{user_id}}&count=5",
+              "host": ["{{api_base_url}}"],
+              "path": ["recurring-transactions", "{{recurring_id}}", "next-executions"],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "{{user_id}}"
+                },
+                {
+                  "key": "count",
+                  "value": "5"
+                }
+              ]
+            },
+            "description": "Get next executions of a recurring transaction"
+          }
+        },
+        {
+          "name": "Update Recurring Transaction",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 2500000,\n  \"isActive\": true\n}"
+            },
+            "url": {
+              "raw": "{{api_base_url}}/recurring-transactions/{{recurring_id}}?userId={{user_id}}",
+              "host": ["{{api_base_url}}"],
+              "path": ["recurring-transactions", "{{recurring_id}}"],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "{{user_id}}"
+                }
+              ]
+            },
+            "description": "Update recurring transaction details"
+          }
+        },
+        {
+          "name": "Delete Recurring Transaction",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{api_base_url}}/recurring-transactions/{{recurring_id}}?userId={{user_id}}",
+              "host": ["{{api_base_url}}"],
+              "path": ["recurring-transactions", "{{recurring_id}}"],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "{{user_id}}"
+                }
+              ]
+            },
+            "description": "Delete a recurring transaction"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Notifications",
+      "item": [
+        {
+          "name": "Get All Notifications",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_base_url}}/notifications?userId={{user_id}}&skip=0&take=10&isRead=false",
+              "host": ["{{api_base_url}}"],
+              "path": ["notifications"],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "{{user_id}}"
+                },
+                {
+                  "key": "skip",
+                  "value": "0"
+                },
+                {
+                  "key": "take",
+                  "value": "10"
+                },
+                {
+                  "key": "isRead",
+                  "value": "false",
+                  "description": "Filter by read status (true/false)"
+                }
+              ]
+            },
+            "description": "Get all notifications for a user"
+          }
+        },
+        {
+          "name": "Get Notification Summary",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_base_url}}/notifications/summary/{{user_id}}",
+              "host": ["{{api_base_url}}"],
+              "path": ["notifications", "summary", "{{user_id}}"]
+            },
+            "description": "Get notification summary (counts by type)"
+          }
+        },
+        {
+          "name": "Get Notification by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_base_url}}/notifications/{{notification_id}}?userId={{user_id}}",
+              "host": ["{{api_base_url}}"],
+              "path": ["notifications", "{{notification_id}}"],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "{{user_id}}"
+                }
+              ]
+            },
+            "description": "Get specific notification details"
+          }
+        },
+        {
+          "name": "Mark Notification as Read",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{api_base_url}}/notifications/{{notification_id}}/read?userId={{user_id}}",
+              "host": ["{{api_base_url}}"],
+              "path": ["notifications", "{{notification_id}}", "read"],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "{{user_id}}"
+                }
+              ]
+            },
+            "description": "Mark a notification as read"
+          }
+        },
+        {
+          "name": "Mark All Notifications as Read",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{api_base_url}}/notifications/batch/read-all?userId={{user_id}}",
+              "host": ["{{api_base_url}}"],
+              "path": ["notifications", "batch", "read-all"],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "{{user_id}}"
+                }
+              ]
+            },
+            "description": "Mark all notifications as read"
+          }
+        },
+        {
+          "name": "Delete Notification",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{api_base_url}}/notifications/{{notification_id}}?userId={{user_id}}",
+              "host": ["{{api_base_url}}"],
+              "path": ["notifications", "{{notification_id}}"],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "{{user_id}}"
+                }
+              ]
+            },
+            "description": "Delete a notification"
+          }
+        },
+        {
+          "name": "Delete All Notifications",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{api_base_url}}/notifications?userId={{user_id}}",
+              "host": ["{{api_base_url}}"],
+              "path": ["notifications"],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "{{user_id}}"
+                }
+              ]
+            },
+            "description": "Delete all notifications for a user"
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "api_base_url",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "access_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "refresh_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "user_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "wallet_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "wallet_id_from",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "wallet_id_to",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "category_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "transaction_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "tag_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "goal_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "budget_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "recurring_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "notification_id",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}

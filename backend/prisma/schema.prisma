@@ -1,0 +1,202 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+  TRANSFER
+}
+
+enum RecurringType {
+  DAILY
+  WEEKLY
+  MONTHLY
+  YEARLY
+}
+
+enum NotificationType {
+  BUDGET_ALERT
+  GOAL_REACHED
+  REMINDER
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  wallets      Wallet[]
+  transactions Transaction[]
+  categories   Category[]
+  budgets      Budget[]
+  goals        Goal[]
+  tags         Tag[]
+  notifications Notification[]
+  recurringTransactions RecurringTransaction[]
+}
+
+model Wallet {
+  id        String   @id @default(uuid())
+  name      String
+  balance   Float    @default(0)
+  currency  String   @default("VND")
+  userId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  transactionsFrom Transaction[] @relation("fromWallet")
+  transactionsTo   Transaction[] @relation("toWallet")
+  recurringTransactions RecurringTransaction[]
+
+  @@index([userId])
+}
+
+model Category {
+  id        String @id @default(uuid())
+  name      String
+  type      TransactionType
+  icon      String?
+  userId    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  transactions Transaction[]
+  budgets      Budget[]
+  recurringTransactions RecurringTransaction[]
+
+  @@unique([userId, name])
+  @@index([type])
+}
+
+model Transaction {
+  id            String @id @default(uuid())
+  amount        Float
+  type          TransactionType
+  note          String?
+  date          DateTime
+
+  userId        String
+  fromWalletId  String?
+  toWalletId    String?
+  categoryId    String?
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fromWallet Wallet? @relation("fromWallet", fields: [fromWalletId], references: [id], onDelete: SetNull)
+  toWallet   Wallet? @relation("toWallet", fields: [toWalletId], references: [id], onDelete: SetNull)
+  category   Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  tags TransactionTag[]
+
+  @@index([userId, date])
+  @@index([categoryId])
+}
+
+model Budget {
+  id         String @id @default(uuid())
+  amount     Float
+  month      Int
+  year       Int
+  userId     String
+  categoryId String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user     User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, categoryId, month, year])
+  @@index([userId])
+}
+
+model Tag {
+  id        String @id @default(uuid())
+  name      String
+  userId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  transactions TransactionTag[]
+
+  @@unique([userId, name])
+  @@index([userId])
+}
+
+model TransactionTag {
+  transactionId String
+  tagId         String
+
+  transaction Transaction @relation(fields: [transactionId], references: [id])
+  tag         Tag         @relation(fields: [tagId], references: [id])
+
+  @@id([transactionId, tagId])
+}
+
+model Goal {
+  id                  String   @id @default(uuid())
+  name                String
+  description         String?
+  target              Float
+  current             Float    @default(0)
+  deadline            DateTime
+  notificationSent    Boolean  @default(false)
+  userId              String
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, deadline])
+}
+
+model RecurringTransaction {
+  id         String        @id @default(uuid())
+  amount     Float
+  type       TransactionType
+  note       String?
+  interval   RecurringType
+  nextDate   DateTime
+  isActive   Boolean       @default(true)
+  userId     String
+  walletId   String
+  categoryId String?
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  user     User     @relation(fields: [userId], references: [id])
+  wallet   Wallet   @relation(fields: [walletId], references: [id])
+  category Category? @relation(fields: [categoryId], references: [id])
+
+  @@index([userId, nextDate, isActive])
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  type      NotificationType
+  message   String
+  isRead    Boolean          @default(false)
+  userId    String
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@index([type])
+}
