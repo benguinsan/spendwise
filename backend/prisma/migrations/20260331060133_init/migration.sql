@@ -42,8 +42,8 @@ DROP TABLE "Wallet";
 CREATE TABLE "users" (
     "user_id" TEXT NOT NULL,
     "email" TEXT NOT NULL,
-    "password" TEXT NOT NULL,
     "name" TEXT,
+    "cognito_sub" TEXT,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
 
@@ -104,6 +104,9 @@ CREATE TABLE "budgets" (
 
 -- CreateIndex
 CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "users_cognito_sub_key" ON "users"("cognito_sub");
 
 -- CreateIndex
 CREATE INDEX "idx_wallet_user" ON "wallets"("user_id");

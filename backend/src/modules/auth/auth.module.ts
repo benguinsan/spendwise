@@ -6,6 +6,7 @@ import { AuthService } from './auth.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { JWT_SECRET, JWT_EXPIRY } from './constants/jwt.constants';
 import { PrismaService } from '../prisma/service/prisma.service';
+import { CognitoJwtAuthGuard } from './guards/cognito-jwt-auth.guard';
 
 @Module({
   imports: [
@@ -16,7 +17,7 @@ import { PrismaService } from '../prisma/service/prisma.service';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, PrismaService],
+  providers: [AuthService, JwtStrategy, CognitoJwtAuthGuard, PrismaService],
   exports: [AuthService, JwtModule, PassportModule],
 })
 export class AuthModule {}

@@ -3,206 +3,276 @@ import {
   UnauthorizedException,
   ConflictException,
   Logger,
+  InternalServerErrorException,
+  BadGatewayException,
 } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import { PrismaService } from '../prisma/service/prisma.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
-import * as bcrypt from 'bcryptjs';
-import { JWT_EXPIRY, REFRESH_TOKEN_EXPIRY } from './constants/jwt.constants';
+import { ConfirmSignupDto } from './dto/confirm-signup.dto';
+import { PrismaService } from '../prisma/service/prisma.service';
 
 @Injectable()
 export class AuthService {
   private logger = new Logger('AuthService');
 
-  constructor(
-    private prisma: PrismaService,
-    private jwtService: JwtService,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async register(registerDto: RegisterDto) {
-    const { email, password, name } = registerDto;
-
-    // Check if user already exists
-    const existingUser = await this.prisma.user.findUnique({
-      where: { email },
-    });
-
-    if (existingUser) {
-      this.logger.warn(`Registration failed: Email ${email} already exists`);
-      throw new ConflictException('Email already registered');
-    }
-
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Create user
-    const user = await this.prisma.user.create({
-      data: {
-        email,
-        password: hashedPassword,
-        name: name || email.split('@')[0],
-      },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        createdAt: true,
-      },
-    });
-
-    this.logger.log(`User registered: ${email}`);
-
-    // Generate tokens
-    // const tokens = this.generateTokens(user.id, user.email);
-
-    return {
-      user,
-      // ...tokens,
-    };
+    return this.registerWithCognito(registerDto);
   }
 
   async login(loginDto: LoginDto) {
-    const { email, password } = loginDto;
+    return this.loginWithCognito(loginDto);
+  }
 
-    // Find user
-    const user = await this.prisma.user.findUnique({
-      where: { email },
-      select: {
-        id: true,
-        email: true,
-        password: true,
-        name: true,
-      },
+  async confirmSignup(confirmSignupDto: ConfirmSignupDto) {
+    const { email, confirmationCode } = confirmSignupDto;
+    const { clientId } = this.getCognitoConfig();
+
+    await this.cognitoRequest<Record<string, never>>('ConfirmSignUp', {
+      ClientId: clientId,
+      Username: email,
+      ConfirmationCode: confirmationCode,
     });
 
-    if (!user) {
-      this.logger.warn(`Login failed: User ${email} not found`);
-      throw new UnauthorizedException('Invalid email or password');
-    }
-
-    // Verify password
-
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-
-    if (!isPasswordValid) {
-      this.logger.warn(`Login failed: Invalid password for ${email}`);
-      throw new UnauthorizedException('Invalid email or password');
-    }
-
-    this.logger.log(`User logged in: ${email}`);
-
-    // Generate tokens
-    const tokens = this.generateTokens(user.id, user.email);
+    // Source of truth sync rule:
+    // Only create/update local `users` row after the user confirms signup.
+    // At this moment we only reliably know `email` (password is managed by Cognito).
+    // `cognitoSub` may be filled later on first successful login.
+    await this.upsertLocalUser({
+      email,
+      // We don't have name from ConfirmSignUp response.
+      name: undefined,
+      cognitoSub: undefined,
+    });
 
     return {
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-      },
-      ...tokens,
+      provider: 'cognito',
+      message: 'Account confirmed successfully',
     };
   }
 
-  async refreshToken(userId: string, refreshToken: string) {
-    // Find user
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-      },
-    });
+  private getCognitoConfig() {
+    const region = process.env.COGNITO_REGION || process.env.AWS_REGION;
+    const clientId = process.env.COGNITO_CLIENT_ID;
 
-    if (!user) {
-      this.logger.warn(`Token refresh failed: User ${userId} not found`);
-      throw new UnauthorizedException('User not found');
-    }
-
-    // Verify refresh token
-    try {
-      const decoded = await this.jwtService.verifyAsync(refreshToken, {
-        secret:
-          process.env.JWT_SECRET ||
-          'your-super-secret-key-change-in-production',
-      });
-
-      if (decoded.sub !== userId || decoded.type !== 'refresh') {
-        throw new Error('Invalid token');
-      }
-    } catch {
-      this.logger.warn(
-        `Token refresh failed: Invalid refresh token for ${userId}`,
+    if (!region || !clientId) {
+      throw new InternalServerErrorException(
+        'Missing Cognito envs: COGNITO_REGION/AWS_REGION and COGNITO_CLIENT_ID',
       );
-      throw new UnauthorizedException('Invalid refresh token');
     }
 
-    // Generate new tokens
-    const tokens = this.generateTokens(user.id, user.email);
-
-    this.logger.log(`Token refreshed for user: ${user.email}`);
-
     return {
-      user,
-      ...tokens,
+      endpoint: `https://cognito-idp.${region}.amazonaws.com/`,
+      clientId,
     };
   }
 
-  logout(userId: string) {
-    // In a real application, you might want to:
-    // 1. Invalidate the refresh token in the database
-    // 2. Add the access token to a blacklist
-    // For now, we'll just log the action
+  private async cognitoRequest<T>(
+    action: string,
+    payload: Record<string, unknown>,
+  ): Promise<T> {
+    const { endpoint } = this.getCognitoConfig();
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-amz-json-1.1',
+        'X-Amz-Target': `AWSCognitoIdentityProviderService.${action}`,
+      },
+      body: JSON.stringify(payload),
+    });
 
-    this.logger.log(`User logged out: ${userId}`);
+    const data = (await response.json()) as Record<string, unknown>;
+    if (!response.ok) {
+      const errorName =
+        typeof data.__type === 'string'
+          ? data.__type
+          : typeof data.code === 'string'
+            ? data.code
+            : '';
+      const message =
+        typeof data.message === 'string'
+          ? data.message
+          : 'Cognito request failed';
+
+      if (errorName.includes('UsernameExistsException')) {
+        throw new ConflictException(message);
+      }
+      if (errorName.includes('NotAuthorizedException')) {
+        throw new UnauthorizedException(message);
+      }
+      throw new BadGatewayException(message);
+    }
+
+    return data as T;
+  }
+
+  private async registerWithCognito(registerDto: RegisterDto) {
+    const { email, password, name } = registerDto;
+    const { clientId } = this.getCognitoConfig();
+
+    const userAttributes: Array<{ Name: string; Value: string }> = [
+      { Name: 'email', Value: email },
+    ];
+    if (name) {
+      userAttributes.push({ Name: 'name', Value: name });
+    }
+
+    const signUpResult = await this.cognitoRequest<{
+      UserSub: string;
+      UserConfirmed: boolean;
+    }>('SignUp', {
+      ClientId: clientId,
+      Username: email,
+      Password: password,
+      UserAttributes: userAttributes,
+    });
 
     return {
-      message: 'Logged out successfully',
+      provider: 'cognito',
+      user: {
+        id: signUpResult.UserSub,
+        email,
+        name: name ?? null,
+      },
+      userConfirmed: signUpResult.UserConfirmed,
+      message: signUpResult.UserConfirmed
+        ? 'Signup successful'
+        : 'Signup successful, please confirm your email code',
     };
   }
 
-  async validateUser(userId: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        createdAt: true,
+  private async loginWithCognito(loginDto: LoginDto) {
+    const { email, password } = loginDto;
+    const { clientId } = this.getCognitoConfig();
+
+    const authResult = await this.cognitoRequest<{
+      AuthenticationResult?: {
+        AccessToken?: string;
+        IdToken?: string;
+        RefreshToken?: string;
+        ExpiresIn?: number;
+        TokenType?: string;
+      };
+      ChallengeName?: string;
+      Session?: string;
+    }>('InitiateAuth', {
+      ClientId: clientId,
+      AuthFlow: 'USER_PASSWORD_AUTH',
+      AuthParameters: {
+        USERNAME: email,
+        PASSWORD: password,
       },
     });
 
-    if (!user) {
-      throw new UnauthorizedException('User not found');
+    // Prefer Cognito `GetUser` (uses AccessToken, no IAM signing)
+    // to reliably get user attributes (sub/email/name) for DB sync.
+    const accessToken = authResult.AuthenticationResult?.AccessToken ?? null;
+    if (accessToken) {
+      const profile = await this.cognitoRequest<{
+        Username?: string;
+        UserAttributes?: Array<{ Name: string; Value: string }>;
+      }>('GetUser', { AccessToken: accessToken });
+
+      const attrs = profile.UserAttributes ?? [];
+      const getAttr = (key: string) => attrs.find((a) => a.Name === key)?.Value;
+
+      const sub = getAttr('sub') ?? null;
+      const profileEmail = getAttr('email') ?? null;
+      const profileName = getAttr('name') ?? null;
+
+      if (profileEmail) {
+        await this.upsertLocalUser({
+          email: profileEmail,
+          name: profileName,
+          cognitoSub: sub ?? undefined,
+        });
+      }
+    } else {
+      // Fallback: try parse IdToken claims if AccessToken isn't present.
+      const idToken = authResult.AuthenticationResult?.IdToken ?? null;
+      if (idToken) {
+        const claims = this.decodeJwtClaims(idToken);
+        if (claims?.email) {
+          await this.upsertLocalUser({
+            email: claims.email,
+            name: claims.name ?? null,
+            cognitoSub: claims.sub,
+          });
+        }
+      }
     }
 
     return {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      createdAt: user.createdAt,
+      provider: 'cognito',
+      challengeName: authResult.ChallengeName ?? null,
+      session: authResult.Session ?? null,
+      accessToken,
+      idToken: authResult.AuthenticationResult?.IdToken ?? null,
+      refreshToken: authResult.AuthenticationResult?.RefreshToken ?? null,
+      expiresIn: authResult.AuthenticationResult?.ExpiresIn ?? null,
+      tokenType: authResult.AuthenticationResult?.TokenType ?? null,
     };
   }
 
-  private generateTokens(userId: string, email: string) {
-    // Generate access token (short-lived)
-    const accessToken = this.jwtService.sign(
-      { sub: userId, email, type: 'access' },
-      { expiresIn: JWT_EXPIRY as any },
-    );
+  private decodeJwtClaims(
+    token: string,
+  ): { sub?: string; email?: string; name?: string } | null {
+    try {
+      const [, payloadBase64Url] = token.split('.');
+      if (!payloadBase64Url) {
+        return null;
+      }
+      const payloadBase64 = payloadBase64Url
+        .replace(/-/g, '+')
+        .replace(/_/g, '/');
+      const padded = payloadBase64.padEnd(
+        payloadBase64.length + ((4 - (payloadBase64.length % 4)) % 4),
+        '=',
+      );
+      const json = Buffer.from(padded, 'base64').toString('utf-8');
+      return JSON.parse(json) as {
+        sub?: string;
+        email?: string;
+        name?: string;
+      };
+    } catch {
+      return null;
+    }
+  }
 
-    // Generate refresh token (long-lived)
-    const refreshToken = this.jwtService.sign(
-      { sub: userId, email, type: 'refresh' },
-      { expiresIn: REFRESH_TOKEN_EXPIRY as any },
-    );
+  private async upsertLocalUser(params: {
+    email: string;
+    name?: string | null;
+    cognitoSub?: string;
+  }) {
+    // We upsert by `email` first, because ConfirmSignUp doesn't return `sub`.
+    // Then, if we have `cognitoSub` (from JWT on login), we attach it to the existing row.
+    const existing = await this.prisma.user.findUnique({
+      where: { email: params.email },
+    });
 
-    return {
-      accessToken,
-      refreshToken,
-      expiresIn: JWT_EXPIRY,
+    const data: Record<string, unknown> = {
+      email: params.email,
     };
+
+    if (params.name !== undefined) {
+      data.name = params.name;
+    }
+    if (params.cognitoSub) {
+      data.cognitoSub = params.cognitoSub;
+    }
+
+    if (existing) {
+      await this.prisma.user.update({
+        where: { id: existing.id },
+        data: data as any,
+      });
+      return;
+    }
+
+    await this.prisma.user.create({
+      data: data as any,
+    });
   }
 }

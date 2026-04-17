@@ -1,0 +1,10 @@
+aws_region           = "ap-southeast-1"
+project_name         = "spendwise"
+environment          = "dev"
+enable_nat_gateway   = true
+create_rds           = false
+# Khi create_rds = true, đặt mật khẩu mạnh:
+# db_password        = "change-me-use-secret-manager-in-prod"
+
+app_container_port      = 3000
+alb_health_check_path   = "/"

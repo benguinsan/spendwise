@@ -28,8 +28,8 @@ enum NotificationType {
 model User {
   id        String   @id @default(uuid())
   email     String   @unique
-  password  String
   name      String?
+  cognitoSub String? @unique @map("cognito_sub")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
