@@ -7,6 +7,12 @@ locals {
   # Build DATABASE_URL for the Cognito PostConfirmation Lambda.
   # Note: RDS module defaults are db_username="appuser", db_name="spendwise".
   cognito_post_confirmation_database_url = var.create_rds && module.rds.db_instance_endpoint != null ? "postgresql://appuser:${var.db_password}@${module.rds.db_instance_endpoint}:5432/spendwise" : null
+  # Application Auto Scaling — ALBRequestCountPerTarget (suffix sau loadbalancer/ + targetgroup/...)
+  ecs_alb_request_count_resource_label = format(
+    "%s/targetgroup/%s",
+    regex(":loadbalancer/(.+)$", module.alb.alb_arn)[0],
+    regex(":targetgroup/(.+)$", module.alb.target_group_arn)[0],
+  )
 }
 
 module "vpc" {
@@ -92,6 +98,22 @@ module "ecs" {
 
   project_name = var.project_name
   environment  = var.environment
+
+  private_subnet_ids              = module.vpc.private_app_subnet_ids
+  ecs_tasks_security_group_id     = module.security_groups.ecs_tasks_security_group_id
+  target_group_arn                = module.alb.target_group_arn
+  container_image                 = "${module.ecr.repository_url}:${var.ecs_backend_image_tag}"
+  container_port                  = var.app_container_port
+  cloudwatch_log_group_name       = module.monitoring.ecs_log_group_name
+  container_environment           = var.ecs_backend_environment
+  desired_count                   = var.ecs_desired_count
+  task_cpu                        = var.ecs_task_cpu
+  task_memory                     = var.ecs_task_memory
+  assign_public_ip                = var.ecs_assign_public_ip
+  autoscaling_min_capacity          = var.ecs_autoscaling_min_capacity
+  autoscaling_max_capacity          = var.ecs_autoscaling_max_capacity
+  alb_request_count_resource_label  = local.ecs_alb_request_count_resource_label
+  alb_request_count_target_value    = var.ecs_alb_request_count_target_value
 }
 
 module "rds" {
