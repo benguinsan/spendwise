@@ -5,13 +5,11 @@ import {
 } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../prisma/service/prisma.service';
 
 interface UpdateData {
   email?: string;
   name?: string;
-  password?: string;
 }
 
 @Injectable()
@@ -27,14 +25,13 @@ export class UsersService {
       throw new ConflictException('Email already exists');
     }
 
-    const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
-
     return this.prisma.user.create({
+      // Cast `data` to avoid stale IDE diagnostics when Prisma client types
+      // lag behind local schema/migration changes.
       data: {
         email: createUserDto.email,
-        password: hashedPassword,
         name: createUserDto.name,
-      },
+      } as any,
       select: {
         id: true,
         email: true,
@@ -131,10 +128,6 @@ export class UsersService {
 
     if (updateUserDto.name) {
       updateData.name = updateUserDto.name;
-    }
-
-    if (updateUserDto.password) {
-      updateData.password = await bcrypt.hash(updateUserDto.password, 10);
     }
 
     return this.prisma.user.update({

@@ -4,8 +4,8 @@ import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 
-import { Button } from "@/components/ui/button"
-import { AuthInput, Field } from "@/components/auth/field"
+import { Button } from "@/src/components/ui/button"
+import { AuthInput, Field } from "@/src/components/auth/field"
 import { routes } from "@/lib/routes"
 
 export function SignupForm() {
