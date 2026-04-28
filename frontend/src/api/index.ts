@@ -1,9 +1,0 @@
-export { authApi } from "./auth.api";
-export { usersApi } from "./users.api";
-export { walletsApi } from "./wallets.api";
-export { transactionsApi } from "./transactions.api";
-export { categoriesApi } from "./categories.api";
-export { tagsApi } from "./tags.api";
-export { goalsApi } from "./goals.api";
-export { budgetsApi } from "./budgets.api";
-export { recurringTransactionsApi } from "./recurring-transactions.api";
