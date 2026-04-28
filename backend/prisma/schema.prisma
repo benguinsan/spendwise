@@ -30,8 +30,8 @@ model User {
   email     String   @unique
   name      String?
   cognitoSub String? @unique @map("cognito_sub")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   wallets      Wallet[]
   transactions Transaction[]
@@ -41,16 +41,18 @@ model User {
   tags         Tag[]
   notifications Notification[]
   recurringTransactions RecurringTransaction[]
+
+  @@map("users")
 }
 
 model Wallet {
-  id        String   @id @default(uuid())
+  id        String   @id @default(uuid()) @map("wallet_id")
   name      String
   balance   Float    @default(0)
   currency  String   @default("VND")
-  userId    String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  userId    String @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -59,16 +61,17 @@ model Wallet {
   recurringTransactions RecurringTransaction[]
 
   @@index([userId])
+  @@map("wallets")
 }
 
 model Category {
-  id        String @id @default(uuid())
+  id        String @id @default(uuid()) @map("category_id")
   name      String
   type      TransactionType
   icon      String?
-  userId    String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  userId    String? @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -78,22 +81,23 @@ model Category {
 
   @@unique([userId, name])
   @@index([type])
+  @@map("categories")
 }
 
 model Transaction {
-  id            String @id @default(uuid())
+  id            String @id @default(uuid()) @map("transaction_id")
   amount        Float
   type          TransactionType
   note          String?
   date          DateTime
 
-  userId        String
-  fromWalletId  String?
-  toWalletId    String?
-  categoryId    String?
+  userId        String @map("user_id")
+  fromWalletId  String? @map("from_wallet_id")
+  toWalletId    String? @map("to_wallet_id")
+  categoryId    String? @map("category_id")
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   fromWallet Wallet? @relation("fromWallet", fields: [fromWalletId], references: [id], onDelete: SetNull)
@@ -104,17 +108,18 @@ model Transaction {
 
   @@index([userId, date])
   @@index([categoryId])
+  @@map("transactions")
 }
 
 model Budget {
-  id         String @id @default(uuid())
+  id         String @id @default(uuid()) @map("budget_id")
   amount     Float
   month      Int
   year       Int
-  userId     String
-  categoryId String?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  userId     String @map("user_id")
+  categoryId String? @map("category_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
 
   user     User @relation(fields: [userId], references: [id], onDelete: Cascade)
   category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
@@ -123,14 +128,15 @@ model Budget {
   // - (userId, categoryId, month, year) when categoryId IS NOT NULL
   // - (userId, month, year) when categoryId IS NULL
   @@index([userId])
+  @@map("budgets")
 }
 
 model Tag {
   id        String @id @default(uuid())
   name      String
-  userId    String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  userId    String @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -138,16 +144,18 @@ model Tag {
 
   @@unique([userId, name])
   @@index([userId])
+  @@map("tags")
 }
 
 model TransactionTag {
-  transactionId String
-  tagId         String
+  transactionId String @map("transaction_id")
+  tagId         String @map("tag_id")
 
   transaction Transaction @relation(fields: [transactionId], references: [id])
   tag         Tag         @relation(fields: [tagId], references: [id])
 
   @@id([transactionId, tagId])
+  @@map("transaction_tags")
 }
 
 model Goal {
@@ -157,14 +165,15 @@ model Goal {
   target              Float
   current             Float    @default(0)
   deadline            DateTime
-  notificationSent    Boolean  @default(false)
-  userId              String
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  notificationSent    Boolean  @default(false) @map("notification_sent")
+  userId              String @map("user_id")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
 
   user User @relation(fields: [userId], references: [id])
 
   @@index([userId, deadline])
+  @@map("goals")
 }
 
 model RecurringTransaction {
@@ -173,32 +182,34 @@ model RecurringTransaction {
   type       TransactionType
   note       String?
   interval   RecurringType
-  nextDate   DateTime
-  isActive   Boolean       @default(true)
-  userId     String
-  walletId   String
-  categoryId String?
-  createdAt  DateTime      @default(now())
-  updatedAt  DateTime      @updatedAt
+  nextDate   DateTime @map("next_date")
+  isActive   Boolean       @default(true) @map("is_active")
+  userId     String @map("user_id")
+  walletId   String @map("wallet_id")
+  categoryId String? @map("category_id")
+  createdAt  DateTime      @default(now()) @map("created_at")
+  updatedAt  DateTime      @updatedAt @map("updated_at")
 
   user     User     @relation(fields: [userId], references: [id])
   wallet   Wallet   @relation(fields: [walletId], references: [id])
   category Category? @relation(fields: [categoryId], references: [id])
 
   @@index([userId, nextDate, isActive])
+  @@map("recurring_transactions")
 }
 
 model Notification {
   id        String           @id @default(uuid())
   type      NotificationType
   message   String
-  isRead    Boolean          @default(false)
-  userId    String
-  createdAt DateTime         @default(now())
-  updatedAt DateTime         @updatedAt
+  isRead    Boolean          @default(false) @map("is_read")
+  userId    String @map("user_id")
+  createdAt DateTime         @default(now()) @map("created_at")
+  updatedAt DateTime         @updatedAt @map("updated_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, isRead])
   @@index([type])
+  @@map("notifications")
 }

@@ -1,12 +1,12 @@
-import type { Metadata } from "next"
+import type { Metadata } from "next";
 
-import { AuthShell } from "@/src/components/auth/auth-shell"
-import { LoginForm } from "@/src/components/auth/login-form"
+import { AuthShell } from "@/components/auth/auth-shell";
+import { LoginForm } from "@/components/auth/login-form";
 
 export const metadata: Metadata = {
   title: "Sign in",
   description: "Sign in to SpendWise",
-}
+};
 
 export default function LoginPage() {
   return (
@@ -16,5 +16,5 @@ export default function LoginPage() {
     >
       <LoginForm />
     </AuthShell>
-  )
+  );
 }
