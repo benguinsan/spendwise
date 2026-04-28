@@ -8,3 +8,8 @@ create_rds           = false
 
 app_container_port      = 3000
 alb_health_check_path   = "/"
+
+# Bastion for SSM port forwarding (optional)
+create_bastion              = false
+bastion_instance_type       = "t3.nano"
+bastion_associate_public_ip = true

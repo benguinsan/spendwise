@@ -65,6 +65,21 @@ resource "aws_security_group" "ecs_tasks" {
   tags = { Name = "${local.name}-ecs-sg" }
 }
 
+resource "aws_security_group" "bastion" {
+  name        = "${local.name}-bastion-sg"
+  description = "Bastion instance"
+  vpc_id      = var.vpc_id
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = { Name = "${local.name}-bastion-sg" }
+}
+
 resource "aws_security_group" "rds" {
   name        = "${local.name}-rds-sg"
   description = "RDS PostgreSQL"
@@ -76,6 +91,17 @@ resource "aws_security_group" "rds" {
     to_port         = 5432
     protocol        = "tcp"
     security_groups = [aws_security_group.ecs_tasks.id]
+  }
+
+  dynamic "ingress" {
+    for_each = var.enable_bastion_rds_access ? [1] : []
+    content {
+      description     = "Postgres from bastion"
+      from_port       = 5432
+      to_port         = 5432
+      protocol        = "tcp"
+      security_groups = [aws_security_group.bastion.id]
+    }
   }
 
   egress {

@@ -33,6 +33,18 @@ variable "db_password" {
   description = "Mật khẩu master RDS khi create_rds = true"
 }
 
+variable "db_username" {
+  type        = string
+  default     = "appuser"
+  description = "RDS master username and runtime DB username for backend"
+}
+
+variable "db_name" {
+  type        = string
+  default     = "spendwise"
+  description = "Application database name on RDS"
+}
+
 variable "app_container_port" {
   type        = number
   default     = 3000
@@ -94,4 +106,21 @@ variable "ecs_alb_request_count_target_value" {
   type        = number
   default     = 200
   description = "Target tracking: request trung bình mỗi task mỗi phút (ALBRequestCountPerTarget)"
+}
+
+variable "create_bastion" {
+  type        = bool
+  default     = false
+  description = "Create a bastion EC2 for SSM port forwarding to RDS"
+}
+
+variable "bastion_instance_type" {
+  type    = string
+  default = "t3.nano"
+}
+
+variable "bastion_associate_public_ip" {
+  type        = bool
+  default     = true
+  description = "Set true when placing bastion in public subnet"
 }

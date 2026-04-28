@@ -37,3 +37,8 @@ output "rds_endpoint" {
   value       = module.rds.db_instance_endpoint
   description = "null nếu create_rds = false"
 }
+
+output "bastion_instance_id" {
+  value       = var.create_bastion ? module.bastion[0].instance_id : null
+  description = "EC2 instance id for SSM port forwarding (null nếu create_bastion = false)"
+}
