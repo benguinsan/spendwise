@@ -2,12 +2,18 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Install dependencies first for better layer caching.
+# Install dependencies with reproducible installs
 COPY package*.json ./
-RUN npm install
+RUN npm ci --legacy-peer-deps
 
+# Copy source code
 COPY . .
 
-EXPOSE 5173
+# Build for production
+RUN npm run build
 
-CMD ["npm", "run", "dev", "--", "--hostname", "0.0.0.0"]
+# Expose port
+EXPOSE 3000
+
+# Start the application
+CMD ["npm", "run", "start", "--", "--hostname", "0.0.0.0"]

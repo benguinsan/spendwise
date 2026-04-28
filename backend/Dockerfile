@@ -2,22 +2,19 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Cài deps
+# Install dependencies
 COPY package*.json ./
 RUN npm ci
 
 # Copy prisma schema
 COPY prisma ./prisma
 
-# Generate Prisma Client (set dummy DATABASE_URL for build phase)
-RUN DATABASE_URL="postgresql://user:password@localhost:5432/dummy" npx prisma generate
-
-# Copy source code
-COPY . .
-
 # Build project
+COPY . .
 RUN npm run build
 
+# Expose port
 EXPOSE 5000
 
-CMD ["node", "dist/src/main.js"]
+# Run migrations and start the application
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/src/main.js"]

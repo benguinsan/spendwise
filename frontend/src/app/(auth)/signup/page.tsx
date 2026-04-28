@@ -1,12 +1,12 @@
-import type { Metadata } from "next"
+import type { Metadata } from "next";
 
-import { AuthShell } from "@/src/components/auth/auth-shell"
-import { SignupForm } from "@/src/components/auth/signup-form"
+import { AuthShell } from "@/components/auth/auth-shell";
+import { SignupForm } from "@/components/auth/signup-form";
 
 export const metadata: Metadata = {
   title: "Create account",
   description: "Create a SpendWise account",
-}
+};
 
 export default function SignupPage() {
   return (
@@ -16,5 +16,5 @@ export default function SignupPage() {
     >
       <SignupForm />
     </AuthShell>
-  )
+  );
 }
