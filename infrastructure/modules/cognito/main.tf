@@ -13,7 +13,8 @@ terraform {
 
 locals {
   name = "${var.project_name}-${var.environment}"
-  lambda_enabled = var.enable_post_confirmation_trigger && var.post_confirmation_database_url != null && var.post_confirmation_database_url != ""
+  # Keep count/for_each plan-time known; DB URL value itself can stay unknown until apply.
+  lambda_enabled               = var.enable_post_confirmation_trigger
   post_confirmation_lambda_dir = "${path.module}/lambda/post-confirmation"
 }
 
@@ -34,7 +35,7 @@ resource "null_resource" "post_confirmation_deps" {
 
 data "archive_file" "post_confirmation_zip" {
   count = local.lambda_enabled ? 1 : 0
-  type = "zip"
+  type  = "zip"
 
   # Include node_modules + index.js.
   source_dir  = local.post_confirmation_lambda_dir
@@ -104,14 +105,21 @@ resource "aws_lambda_function" "post_confirmation" {
   filename         = data.archive_file.post_confirmation_zip[0].output_path
   source_code_hash = data.archive_file.post_confirmation_zip[0].output_base64sha256
 
-  timeout      = 15
-  memory_size  = 256
-  publish      = false
+  timeout     = 15
+  memory_size = 256
+  publish     = false
 
   environment {
     variables = {
       # Used by lambda code to upsert into your app DB.
       DATABASE_URL = var.post_confirmation_database_url
+    }
+  }
+
+  lifecycle {
+    precondition {
+      condition     = var.post_confirmation_database_url != null && var.post_confirmation_database_url != ""
+      error_message = "post_confirmation_database_url must be provided when enable_post_confirmation_trigger=true."
     }
   }
 

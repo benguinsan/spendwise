@@ -119,7 +119,9 @@ model Budget {
   user     User @relation(fields: [userId], references: [id], onDelete: Cascade)
   category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
 
-  @@unique([userId, categoryId, month, year])
+  // Enforced via SQL partial unique indexes in migration:
+  // - (userId, categoryId, month, year) when categoryId IS NOT NULL
+  // - (userId, month, year) when categoryId IS NULL
   @@index([userId])
 }
 

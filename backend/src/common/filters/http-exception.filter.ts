@@ -7,11 +7,72 @@ import {
   BadRequestException,
   Logger,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { Response } from 'express';
+
+function formatCause(cause: unknown): string {
+  if (cause == null) {
+    return '';
+  }
+  if (cause instanceof Error) {
+    return `${cause.name}: ${cause.message}`;
+  }
+  try {
+    return JSON.stringify(cause);
+  } catch {
+    return String(cause);
+  }
+}
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
   private logger = new Logger('HttpException');
+
+  private logServerError(exception: unknown, request: { method: string; url: string }) {
+    const route = `${request.method} ${request.url}`;
+
+    if (exception instanceof Prisma.PrismaClientKnownRequestError) {
+      this.logger.error(
+        `[Prisma KnownRequest] ${route} code=${exception.code} message=${exception.message} meta=${JSON.stringify(exception.meta)} cause=${formatCause(exception.cause)}`,
+        exception.stack,
+      );
+      return;
+    }
+
+    if (exception instanceof Prisma.PrismaClientUnknownRequestError) {
+      this.logger.error(
+        `[Prisma UnknownRequest] ${route} message=${exception.message} cause=${formatCause(exception.cause)}`,
+        exception.stack,
+      );
+      return;
+    }
+
+    if (exception instanceof Prisma.PrismaClientInitializationError) {
+      this.logger.error(
+        `[Prisma Init] ${route} errorCode=${exception.errorCode} message=${exception.message} cause=${formatCause(exception.cause)}`,
+        exception.stack,
+      );
+      return;
+    }
+
+    if (exception instanceof Prisma.PrismaClientValidationError) {
+      this.logger.error(
+        `[Prisma Validation] ${route} message=${exception.message}`,
+        exception.stack,
+      );
+      return;
+    }
+
+    if (exception instanceof Error) {
+      this.logger.error(
+        `Unhandled error: ${route} message=${exception.message} cause=${formatCause(exception.cause)}`,
+        exception.stack,
+      );
+      return;
+    }
+
+    this.logger.error(`Unhandled non-Error: ${route}`, String(exception));
+  }
 
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
@@ -32,12 +93,12 @@ export class HttpExceptionFilter implements ExceptionFilter {
       } else {
         message = exceptionResponse;
       }
+      if (status >= 500) {
+        this.logServerError(exception, request);
+      }
     } else if (exception instanceof Error) {
       message = exception.message;
-      this.logger.error(
-        `Unhandled error: ${exception.message}`,
-        exception.stack,
-      );
+      this.logServerError(exception, request);
     }
 
     // Log validation errors safely
