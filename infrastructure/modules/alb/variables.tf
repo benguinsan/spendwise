@@ -27,3 +27,9 @@ variable "health_check_path" {
   type    = string
   default = "/"
 }
+
+variable "acm_certificate_arn" {
+  type        = string
+  default     = ""
+  description = "ACM certificate ARN for HTTPS listener on ALB. Leave empty to keep HTTP-only."
+}

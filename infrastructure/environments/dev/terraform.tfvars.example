@@ -8,6 +8,7 @@ create_rds           = false
 
 app_container_port      = 3000
 alb_health_check_path   = "/"
+alb_acm_certificate_arn = "arn:aws:acm:<region>:<account-id>:certificate/<certificate-id>"
 
 # Bastion for SSM port forwarding (optional)
 create_bastion              = false

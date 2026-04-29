@@ -4,7 +4,7 @@ data "aws_availability_zones" "available" {
 
 locals {
   azs              = slice(data.aws_availability_zones.available.names, 0, 2)
-  frontend_api_url = "http://${module.alb.alb_dns_name}"
+  frontend_api_url = var.alb_acm_certificate_arn != "" ? "https://${module.alb.alb_dns_name}" : "http://${module.alb.alb_dns_name}"
   ecs_alb_request_count_resource_label = format(
     "%s/targetgroup/%s",
     regex(":loadbalancer/(.+)$", module.alb.alb_arn)[0],
@@ -99,6 +99,7 @@ module "alb" {
   alb_security_group_id = module.security_groups.alb_security_group_id
   container_port        = var.app_container_port
   health_check_path     = var.alb_health_check_path
+  acm_certificate_arn   = var.alb_acm_certificate_arn
 }
 
 module "ecs" {
