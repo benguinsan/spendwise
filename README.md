@@ -1,23 +1,25 @@
 # SpendWiseApp
 
-## Run with Docker (recommended)
+Expense management app with:
 
-### Prerequisites
+- `frontend/`: Next.js (Amplify hosting)
+- `backend/`: NestJS + Prisma (ECS Fargate)
+- `infrastructure/`: Terraform (VPC, ALB, ECS, RDS, Cognito, Amplify, ECR)
 
-- Docker Desktop (or Docker Engine) installed and running
-- From project root (`SpendWiseApp/`)
+## Cloud Architecture
 
-### Option A — Full stack (PostgreSQL + Nginx + Backend + Frontend)
+![SpendWise AWS Architecture](assets/aws-architecture.jpg)
 
-Use this for local development with a local Postgres container.
+## Run Locally with Docker
+
+### Option A: Full stack
 
 ```bash
 docker compose -f docker-compose.yml up --build
 ```
 
-- App (via Nginx): `http://localhost:3000`
-- Backend (direct): `http://localhost:5001`
-- PostgreSQL (from host tools): `127.0.0.1:54321`
+- App via Nginx: `http://localhost:3000`
+- Backend direct: `http://localhost:5001`
 
 Stop:
 
@@ -25,81 +27,85 @@ Stop:
 docker compose -f docker-compose.yml down
 ```
 
-Reset everything (including DB data):
+Reset including volumes:
 
 ```bash
 docker compose -f docker-compose.yml down -v
 ```
 
-### Option B — App only (no Postgres in Compose)
-
-Use this when your database is outside Docker (e.g. RDS PostgreSQL, a remote Postgres, etc.).
+### Option B: App only (external DB)
 
 ```bash
 docker compose -f docker-compose.app.yml up --build
 ```
 
-- App (via Nginx): `http://localhost:3000`
-- Backend (direct): `http://localhost:5000` (note: port `5000` may conflict on macOS; see below)
+## Deploy AWS Infrastructure (Terraform)
 
-## Database notes
-
-### Why `54321:5432`?
-
-In `docker-compose.yml`, Postgres listens on port `5432` inside the container, but is mapped to `54321` on your machine:
-
-- **container**: `5432`
-- **host**: `54321`
-
-This avoids conflicts if your laptop already runs Postgres on `5432`.
-
-### Connect with DBeaver (local Postgres container)
-
-When using **Option A** (`docker-compose.yml`):
-
-- **Host**: `127.0.0.1`
-- **Port**: `54321`
-- **Database**: `spendwise`
-- **Username**: `admin`
-- **Password**: `letmein12345`
-
-SSL: usually disabled for local Docker (`sslmode=disable` or off in DBeaver).
-
-### Backend env files (DB inside Docker vs outside)
-
-- **`docker-compose-env/backend.env`** (used by `docker-compose.yml`)
-  - For DB inside Docker Compose
-  - `DB_HOST=postgres`
-- **`docker-compose-env/backend.app.env`** (used by `docker-compose.app.yml`)
-  - For DB outside Docker Compose (example: RDS)
-  - Set `DB_HOST=<rds-endpoint>` (do not use `localhost` from inside a container unless you use `host.docker.internal` on Docker Desktop)
-
-## Common issues
-
-### Port 5000 already in use (macOS)
-
-If Docker fails with `bind: address already in use` on port `5000`, something on macOS (often `ControlCenter`) may be listening on `5000`.
-
-Fix: change the host mapping in compose, e.g.:
-
-- from `5000:5000` to `5001:5000`
-
-(`docker-compose.yml` already maps backend to `5001:5000`.)
-
-### Switched from MySQL — clean up old Docker resources
-
-If you previously ran this stack with MySQL, stop everything and drop Compose volumes so only the current Postgres setup remains:
+Run from project root:
 
 ```bash
-docker compose -f docker-compose.yml down --remove-orphans -v
-docker compose -f docker-compose.yml up --build
+terraform -chdir="infrastructure/environments/dev" init
+terraform -chdir="infrastructure/environments/dev" plan -var-file="terraform.tfvars"
+terraform -chdir="infrastructure/environments/dev" apply -var-file="terraform.tfvars"
 ```
 
-Optional: remove unused MySQL images after you no longer need them:
+Destroy when needed:
 
 ```bash
-docker images | grep -E 'mysql|mariadb'
-docker rmi <image_id>
+terraform -chdir="infrastructure/environments/dev" destroy -var-file="terraform.tfvars"
 ```
 
-Orphan volumes from old projects can be listed with `docker volume ls` and removed with `docker volume rm <name>` if you are sure they are unused.
+## Build and Push Backend Image to ECR
+
+1) Get ECR repository URL from Terraform output:
+
+```bash
+terraform -chdir="infrastructure/environments/dev" output -raw ecr_repository_url
+```
+
+2) Login Docker to ECR:
+
+```bash
+aws ecr get-login-password --region <aws-region> \
+  | docker login --username AWS --password-stdin <aws-account-id>.dkr.ecr.<aws-region>.amazonaws.com
+```
+
+3) Build and push image:
+
+```bash
+docker build -t spendwise-backend:latest ./backend
+docker tag spendwise-backend:latest <ecr_repository_url>:<image_tag>
+docker push <ecr_repository_url>:<image_tag>
+```
+
+4) Update Terraform variable `ecs_backend_image_tag` and apply again.
+
+## Run First Database Migration
+
+After RDS is up and backend image is available, run migration in ECS one-off task.
+
+Example command:
+
+```bash
+aws ecs run-task \
+  --cluster <ecs_cluster_name> \
+  --launch-type FARGATE \
+  --task-definition <task_definition_arn_or_family> \
+  --network-configuration "awsvpcConfiguration={subnets=[<subnet-1>,<subnet-2>],securityGroups=[<ecs-sg>],assignPublicIp=DISABLED}" \
+  --overrides '{"containerOverrides":[{"name":"backend","command":["npx","prisma","migrate","deploy"]}]}'
+```
+
+Then force new deployment:
+
+```bash
+aws ecs update-service \
+  --cluster <ecs_cluster_name> \
+  --service <ecs_service_name> \
+  --force-new-deployment
+```
+
+## Frontend (Amplify) Notes
+
+- Amplify build config is defined in `amplify.yml`.
+- For CI/CD: push branch -> open PR -> merge to tracked branch -> Amplify auto rebuilds.
+- Ensure `NEXT_PUBLIC_API_URL` points to the intended backend endpoint for each environment.

@@ -8,7 +8,8 @@ terraform {
 }
 
 locals {
-  name = "${var.project_name}-${var.environment}"
+  name         = "${var.project_name}-${var.environment}"
+  enable_https = trimspace(var.acm_certificate_arn) != ""
 }
 
 resource "aws_lb" "this" {
@@ -51,6 +52,30 @@ resource "aws_lb_listener" "http" {
   load_balancer_arn = aws_lb.this.arn
   port              = 80
   protocol          = "HTTP"
+
+  default_action {
+    type = local.enable_https ? "redirect" : "forward"
+
+    dynamic "redirect" {
+      for_each = local.enable_https ? [1] : []
+      content {
+        port        = "443"
+        protocol    = "HTTPS"
+        status_code = "HTTP_301"
+      }
+    }
+
+    target_group_arn = local.enable_https ? null : aws_lb_target_group.ecs.arn
+  }
+}
+
+resource "aws_lb_listener" "https" {
+  count             = local.enable_https ? 1 : 0
+  load_balancer_arn = aws_lb.this.arn
+  port              = 443
+  protocol          = "HTTPS"
+  ssl_policy        = "ELBSecurityPolicy-TLS13-1-2-2021-06"
+  certificate_arn   = var.acm_certificate_arn
 
   default_action {
     type             = "forward"

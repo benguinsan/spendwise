@@ -7,7 +7,8 @@ locals {
   # Build DATABASE_URL for the Cognito PostConfirmation Lambda.
   cognito_post_confirmation_database_url = var.create_rds && module.rds.db_instance_endpoint != null ? "postgresql://${var.db_username}:${var.db_password}@${module.rds.db_instance_endpoint}/${var.db_name}?sslmode=no-verify&schema=public" : null
   # Next.js frontend needs backend base URL for calls to /auth, /users, /wallets, ...
-  frontend_api_url = "http://${module.alb.alb_dns_name}"
+  # frontend_api_url = var.alb_acm_certificate_arn != "" ? "https://${module.alb.alb_dns_name}" : "http://${module.alb.alb_dns_name}"
+  frontend_api_url = "https://${module.alb.alb_dns_name}"
   # Application Auto Scaling — ALBRequestCountPerTarget (suffix sau loadbalancer/ + targetgroup/...)
   ecs_alb_request_count_resource_label = format(
     "%s/targetgroup/%s",
@@ -30,6 +31,7 @@ locals {
     ]
   )
 }
+
 
 module "vpc" {
   source = "../../modules/vpc"

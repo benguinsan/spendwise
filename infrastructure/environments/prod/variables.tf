@@ -38,6 +38,12 @@ variable "alb_health_check_path" {
   default = "/"
 }
 
+variable "alb_acm_certificate_arn" {
+  type        = string
+  default     = ""
+  description = "ACM certificate ARN for ALB HTTPS listener. Required for HTTPS backend endpoint."
+}
+
 variable "ecs_backend_image_tag" {
   type        = string
   default     = "latest"
