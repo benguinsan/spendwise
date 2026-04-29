@@ -1,20 +1,5 @@
 // API client types and functions
-function getApiBaseUrl() {
-  const envUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
-  if (envUrl) {
-    return envUrl.replace(/\/+$/, "");
-  }
-
-  // Keep local development behavior without requiring env vars.
-  if (typeof window !== "undefined" && window.location.hostname === "localhost") {
-    return "http://localhost:5000";
-  }
-
-  // In cloud environments, prefer same-origin proxy/rewrite (e.g. /api -> backend).
-  return "/api";
-}
-
-const API_BASE_URL = getApiBaseUrl();
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
 export class APIError extends Error {
   constructor(
