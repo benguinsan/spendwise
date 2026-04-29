@@ -12,14 +12,10 @@ import { useToast } from "@/contexts/toast";
 
 export function SignupForm() {
   const router = useRouter();
-  const { register, confirmSignup, isLoading } = useAuth();
+  const { register, isLoading } = useAuth();
   const { addToast } = useToast();
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
-  const [confirmationStep, setConfirmationStep] = useState(false);
-  const [confirmationEmail, setConfirmationEmail] = useState<string | null>(
-    null,
-  );
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -56,10 +52,10 @@ export function SignupForm() {
       const result = await register(email, password, name);
 
       if (!result.userConfirmed) {
-        // Need confirmation code
-        setConfirmationEmail(email);
-        setConfirmationStep(true);
+        window.sessionStorage.setItem("pendingSignupEmail", email);
         addToast("Check your email for confirmation code", "info");
+        const params = new URLSearchParams({ email });
+        router.push(`${routes.confirmSignup}?${params.toString()}`);
       } else {
         // Auto-login if confirmed
         addToast("Account created successfully!", "success");
@@ -71,64 +67,6 @@ export function SignupForm() {
       setFormError(message);
       addToast(message, "error");
     }
-  }
-
-  async function handleConfirmation(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setFormError(null);
-
-    const fd = new FormData(e.currentTarget);
-    const confirmationCode = String(fd.get("confirmation") ?? "").trim();
-
-    if (!confirmationCode || !confirmationEmail) {
-      setFormError("Enter confirmation code.");
-      return;
-    }
-
-    try {
-      await confirmSignup(confirmationEmail, confirmationCode);
-      addToast("Account confirmed! Please sign in.", "success");
-      router.push(routes.login);
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Confirmation failed";
-      setFormError(message);
-      addToast(message, "error");
-    }
-  }
-
-  if (confirmationStep) {
-    return (
-      <form onSubmit={handleConfirmation} className="space-y-5">
-        <div className="rounded-lg bg-blue-50 p-4 text-sm text-blue-900">
-          We sent a confirmation code to <strong>{confirmationEmail}</strong>.
-          Check your email and enter it below.
-        </div>
-        {formError ? (
-          <p className="text-sm text-destructive" role="alert">
-            {formError}
-          </p>
-        ) : null}
-        <Field id="confirmation" label="Confirmation code">
-          <AuthInput
-            id="confirmation"
-            name="confirmation"
-            type="text"
-            placeholder="Enter 6-digit code"
-            required
-            disabled={isLoading}
-          />
-        </Field>
-        <Button
-          type="submit"
-          className="h-10 w-full"
-          size="lg"
-          disabled={isLoading}
-        >
-          {isLoading ? "Confirming..." : "Confirm account"}
-        </Button>
-      </form>
-    );
   }
 
   return (
