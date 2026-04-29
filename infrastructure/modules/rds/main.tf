@@ -24,17 +24,17 @@ resource "aws_db_subnet_group" "this" {
 resource "aws_db_instance" "this" {
   count = var.create_rds ? 1 : 0
 
-  identifier                 = "${local.name}-postgres"
-  engine                     = "postgres"
-  engine_version             = "16"
-  instance_class             = var.instance_class
-  allocated_storage          = var.allocated_storage
-  storage_type               = "gp3"
-  db_name                    = var.db_name
-  username                   = var.db_username
-  password                   = var.db_password
-  db_subnet_group_name       = aws_db_subnet_group.this[0].name
-  vpc_security_group_ids     = [var.rds_security_group_id]
+  identifier             = "${local.name}-postgres"
+  engine                 = "postgres"
+  engine_version         = "16"
+  instance_class         = var.instance_class
+  allocated_storage      = var.allocated_storage
+  storage_type           = "gp3"
+  db_name                = var.db_name
+  username               = var.db_username
+  password               = var.db_password
+  db_subnet_group_name   = aws_db_subnet_group.this[0].name
+  vpc_security_group_ids = [var.rds_security_group_id]
   # Cost-optimized defaults for non-production workloads.
   multi_az                   = false
   skip_final_snapshot        = true

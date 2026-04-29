@@ -94,7 +94,7 @@ EOF
   # Expose backend URL to the Next.js build (NEXT_PUBLIC_*).
   app_environment_variables = {
     AMPLIFY_MONOREPO_APP_ROOT = "frontend"
-    NEXT_PUBLIC_API_URL = local.frontend_api_url
+    NEXT_PUBLIC_API_URL       = local.frontend_api_url
   }
 }
 
