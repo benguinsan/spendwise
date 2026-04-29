@@ -3,7 +3,8 @@ data "aws_availability_zones" "available" {
 }
 
 locals {
-  azs = slice(data.aws_availability_zones.available.names, 0, 2)
+  azs              = slice(data.aws_availability_zones.available.names, 0, 2)
+  frontend_api_url = "http://${module.alb.alb_dns_name}"
   ecs_alb_request_count_resource_label = format(
     "%s/targetgroup/%s",
     regex(":loadbalancer/(.+)$", module.alb.alb_arn)[0],
@@ -36,21 +37,42 @@ module "ecr" {
   environment  = var.environment
 }
 
-module "s3_frontend" {
-  source = "../../modules/s3_frontend"
+module "amplify" {
+  source = "../../modules/amplify"
 
   project_name = var.project_name
   environment  = var.environment
-}
 
-module "cloudfront" {
-  source = "../../modules/cloudfront"
+  repository_url = var.amplify_repository_url
+  access_token   = var.amplify_access_token
+  branch_name    = var.amplify_branch_name
 
-  project_name            = var.project_name
-  environment             = var.environment
-  s3_bucket_id            = module.s3_frontend.bucket_id
-  s3_bucket_arn           = module.s3_frontend.bucket_arn
-  s3_regional_domain_name = module.s3_frontend.bucket_regional_domain_name
+  build_spec = <<-EOF
+version: 1
+applications:
+  - appRoot: frontend
+    frontend:
+      phases:
+        preBuild:
+          commands:
+            - npm ci --legacy-peer-deps
+        build:
+          commands:
+            - npm run build
+      artifacts:
+        baseDirectory: .next
+        files:
+          - '**/*'
+        discard-paths: yes
+      cache:
+        paths:
+          - node_modules/**/*
+EOF
+
+  app_environment_variables = {
+    AMPLIFY_MONOREPO_APP_ROOT = "frontend"
+    NEXT_PUBLIC_API_URL       = local.frontend_api_url
+  }
 }
 
 module "cognito" {
@@ -85,21 +107,21 @@ module "ecs" {
   project_name = var.project_name
   environment  = var.environment
 
-  private_subnet_ids              = module.vpc.private_app_subnet_ids
-  ecs_tasks_security_group_id     = module.security_groups.ecs_tasks_security_group_id
-  target_group_arn                = module.alb.target_group_arn
-  container_image                 = "${module.ecr.repository_url}:${var.ecs_backend_image_tag}"
-  container_port                  = var.app_container_port
-  cloudwatch_log_group_name       = module.monitoring.ecs_log_group_name
-  container_environment           = var.ecs_backend_environment
-  desired_count                   = var.ecs_desired_count
-  task_cpu                        = var.ecs_task_cpu
-  task_memory                     = var.ecs_task_memory
-  assign_public_ip                = var.ecs_assign_public_ip
-  autoscaling_min_capacity          = var.ecs_autoscaling_min_capacity
-  autoscaling_max_capacity          = var.ecs_autoscaling_max_capacity
-  alb_request_count_resource_label  = local.ecs_alb_request_count_resource_label
-  alb_request_count_target_value    = var.ecs_alb_request_count_target_value
+  private_subnet_ids               = module.vpc.private_app_subnet_ids
+  ecs_tasks_security_group_id      = module.security_groups.ecs_tasks_security_group_id
+  target_group_arn                 = module.alb.target_group_arn
+  container_image                  = "${module.ecr.repository_url}:${var.ecs_backend_image_tag}"
+  container_port                   = var.app_container_port
+  cloudwatch_log_group_name        = module.monitoring.ecs_log_group_name
+  container_environment            = var.ecs_backend_environment
+  desired_count                    = var.ecs_desired_count
+  task_cpu                         = var.ecs_task_cpu
+  task_memory                      = var.ecs_task_memory
+  assign_public_ip                 = var.ecs_assign_public_ip
+  autoscaling_min_capacity         = var.ecs_autoscaling_min_capacity
+  autoscaling_max_capacity         = var.ecs_autoscaling_max_capacity
+  alb_request_count_resource_label = local.ecs_alb_request_count_resource_label
+  alb_request_count_target_value   = var.ecs_alb_request_count_target_value
 }
 
 module "rds" {

@@ -88,3 +88,20 @@ variable "ecs_alb_request_count_target_value" {
   default     = 200
   description = "Target tracking ALB requests per target per minute"
 }
+
+variable "amplify_repository_url" {
+  type        = string
+  description = "Git repository URL for Amplify (GitHub/GitLab/Bitbucket)"
+}
+
+variable "amplify_access_token" {
+  type        = string
+  sensitive   = true
+  description = "Personal access token used by Amplify to connect repository"
+}
+
+variable "amplify_branch_name" {
+  type        = string
+  default     = "main"
+  description = "Git branch to deploy on Amplify"
+}

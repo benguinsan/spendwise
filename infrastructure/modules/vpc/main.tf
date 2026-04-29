@@ -12,13 +12,13 @@ locals {
 }
 
 resource "aws_vpc" "this" {
-    cidr_block           = var.vpc_cidr
-    enable_dns_hostnames = true
-    enable_dns_support   = true
+  cidr_block           = var.vpc_cidr
+  enable_dns_hostnames = true
+  enable_dns_support   = true
 
-    tags = {
-      Name = "${local.name}-vpc"
-    }
+  tags = {
+    Name = "${local.name}-vpc"
+  }
 }
 
 resource "aws_internet_gateway" "this" {
@@ -106,7 +106,7 @@ resource "aws_route_table_association" "public" {
   count          = 2
   subnet_id      = aws_subnet.public[count.index].id
   route_table_id = aws_route_table.public.id
-} 
+}
 
 # Private route table
 resource "aws_route_table" "private" {

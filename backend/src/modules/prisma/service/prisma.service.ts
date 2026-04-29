@@ -11,7 +11,7 @@ export class PrismaService extends PrismaClient {
     }
 
     const parsedUrl = new URL(databaseUrl);
-    const sslmode = parsedUrl.searchParams.get('sslmode');
+    const sslmode = (parsedUrl.searchParams.get('sslmode') ?? '').toLowerCase();
     const schema = parsedUrl.searchParams.get('schema') ?? undefined;
 
     const poolConfig: PoolConfig = {
@@ -19,10 +19,25 @@ export class PrismaService extends PrismaClient {
     };
 
     // Prisma adapter-pg uses node-postgres under the hood.
-    // For AWS RDS dev environments with self-signed chain, map sslmode=no-verify
-    // to pg SSL config explicitly.
-    if (sslmode === 'no-verify') {
-      poolConfig.ssl = { rejectUnauthorized: false };
+    // Explicitly map sslmode to pg SSL behavior so local Docker and RDS both work:
+    // - sslmode=disable   -> plain TCP (local docker postgres default)
+    // - sslmode=require   -> TLS + cert verification
+    // - sslmode=no-verify -> TLS without CA verification (RDS dev shortcut)
+    switch (sslmode) {
+      case 'disable':
+        poolConfig.ssl = false;
+        break;
+      case 'require':
+      case 'verify-ca':
+      case 'verify-full':
+        poolConfig.ssl = true;
+        break;
+      case 'no-verify':
+        poolConfig.ssl = { rejectUnauthorized: false };
+        break;
+      default:
+        // No sslmode in URL -> leave pg default behavior.
+        break;
     }
 
     const adapter = new PrismaPg(poolConfig, { schema });
