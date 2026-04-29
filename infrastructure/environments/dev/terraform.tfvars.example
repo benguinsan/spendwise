@@ -13,3 +13,8 @@ alb_health_check_path   = "/"
 create_bastion              = false
 bastion_instance_type       = "t3.nano"
 bastion_associate_public_ip = true
+
+# Amplify frontend hosting (replace with your Git repo + token)
+amplify_repository_url = "https://github.com/<org>/<repo>.git"
+amplify_access_token   = "CHANGE_ME"
+amplify_branch_name    = "main"

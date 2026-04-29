@@ -6,6 +6,8 @@ locals {
   azs = slice(data.aws_availability_zones.available.names, 0, 2)
   # Build DATABASE_URL for the Cognito PostConfirmation Lambda.
   cognito_post_confirmation_database_url = var.create_rds && module.rds.db_instance_endpoint != null ? "postgresql://${var.db_username}:${var.db_password}@${module.rds.db_instance_endpoint}/${var.db_name}?sslmode=no-verify&schema=public" : null
+  # Next.js frontend needs backend base URL for calls to /auth, /users, /wallets, ...
+  frontend_api_url = "http://${module.alb.alb_dns_name}"
   # Application Auto Scaling — ALBRequestCountPerTarget (suffix sau loadbalancer/ + targetgroup/...)
   ecs_alb_request_count_resource_label = format(
     "%s/targetgroup/%s",
@@ -55,21 +57,45 @@ module "ecr" {
   environment  = var.environment
 }
 
-module "s3_frontend" {
-  source = "../../modules/s3_frontend"
+module "amplify" {
+  source = "../../modules/amplify"
 
   project_name = var.project_name
   environment  = var.environment
-}
 
-module "cloudfront" {
-  source = "../../modules/cloudfront"
+  repository_url = var.amplify_repository_url
+  access_token   = var.amplify_access_token
+  branch_name    = var.amplify_branch_name
 
-  project_name            = var.project_name
-  environment             = var.environment
-  s3_bucket_id            = module.s3_frontend.bucket_id
-  s3_bucket_arn           = module.s3_frontend.bucket_arn
-  s3_regional_domain_name = module.s3_frontend.bucket_regional_domain_name
+  # Monorepo: amplify sẽ mặc định build từ repo root.
+  # Vì frontend nằm ở ./frontend nên set appRoot để Amplify build đúng.
+  build_spec = <<-EOF
+version: 1
+applications:
+  - appRoot: frontend
+    frontend:
+      phases:
+        preBuild:
+          commands:
+            - npm ci --legacy-peer-deps
+        build:
+          commands:
+            - npm run build
+      artifacts:
+        baseDirectory: .next
+        files:
+          - '**/*'
+        discard-paths: yes
+      cache:
+        paths:
+          - node_modules/**/*
+EOF
+
+  # Expose backend URL to the Next.js build (NEXT_PUBLIC_*).
+  app_environment_variables = {
+    AMPLIFY_MONOREPO_APP_ROOT = "frontend"
+    NEXT_PUBLIC_API_URL = local.frontend_api_url
+  }
 }
 
 module "cognito" {

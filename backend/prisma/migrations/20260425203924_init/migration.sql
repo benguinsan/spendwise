@@ -1,11 +1,35 @@
 -- CreateEnum
-CREATE TYPE "TransactionType" AS ENUM ('INCOME', 'EXPENSE', 'TRANSFER');
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_type WHERE typname = 'TransactionType'
+    ) THEN
+        CREATE TYPE "TransactionType" AS ENUM ('INCOME', 'EXPENSE', 'TRANSFER');
+    END IF;
+END
+$$;
 
 -- CreateEnum
-CREATE TYPE "RecurringType" AS ENUM ('DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY');
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_type WHERE typname = 'RecurringType'
+    ) THEN
+        CREATE TYPE "RecurringType" AS ENUM ('DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY');
+    END IF;
+END
+$$;
 
 -- CreateEnum
-CREATE TYPE "NotificationType" AS ENUM ('BUDGET_ALERT', 'GOAL_REACHED', 'REMINDER');
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_type WHERE typname = 'NotificationType'
+    ) THEN
+        CREATE TYPE "NotificationType" AS ENUM ('BUDGET_ALERT', 'GOAL_REACHED', 'REMINDER');
+    END IF;
+END
+$$;
 
 -- CreateTable
 CREATE TABLE "User" (

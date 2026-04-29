@@ -124,3 +124,20 @@ variable "bastion_associate_public_ip" {
   default     = true
   description = "Set true when placing bastion in public subnet"
 }
+
+variable "amplify_repository_url" {
+  type        = string
+  description = "Git repository URL for Amplify (GitHub/GitLab/Bitbucket)"
+}
+
+variable "amplify_access_token" {
+  type        = string
+  sensitive   = true
+  description = "Personal access token used by Amplify to connect repository"
+}
+
+variable "amplify_branch_name" {
+  type        = string
+  default     = "main"
+  description = "Git branch to deploy on Amplify"
+}
