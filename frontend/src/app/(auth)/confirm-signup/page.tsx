@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
 import { AuthShell } from "@/components/auth/auth-shell";
 import { ConfirmSignupForm } from "@/components/auth/confirm-signup-form";
@@ -14,7 +15,9 @@ export default function ConfirmSignupPage() {
       title="Confirm account"
       description="Enter the verification code sent to your email."
     >
-      <ConfirmSignupForm />
+      <Suspense fallback={<p className="text-sm text-muted-foreground">Loading...</p>}>
+        <ConfirmSignupForm />
+      </Suspense>
     </AuthShell>
   );
 }
