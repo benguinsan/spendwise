@@ -33,6 +33,11 @@ async function bootstrap() {
     new TransformInterceptor(),
   );
 
+  const dbUrl = process.env.DATABASE_URL || 'KHONG_CO_BIEN_MOI_TRUONG';
+  // Thay the mat khau bang *** de khong bi lo tren CloudWatch
+  const safeUrl = dbUrl.replace(/:([^:@]{3,})@/, ':***@');
+  console.log('🚀 [DEBUG] URL FARGATE ĐANG DÙNG LÀ:', safeUrl);
+
   await app.listen(process.env.PORT ?? 5000);
 }
 

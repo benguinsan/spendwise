@@ -9,34 +9,45 @@
 
 */
 -- DropForeignKey
-ALTER TABLE "Budget" DROP CONSTRAINT "Budget_userId_fkey";
+ALTER TABLE IF EXISTS "Budget" DROP CONSTRAINT IF EXISTS "Budget_userId_fkey";
 
 -- DropForeignKey
-ALTER TABLE "Transaction" DROP CONSTRAINT "Transaction_categoryId_fkey";
+ALTER TABLE IF EXISTS "Transaction" DROP CONSTRAINT IF EXISTS "Transaction_categoryId_fkey";
 
 -- DropForeignKey
-ALTER TABLE "Transaction" DROP CONSTRAINT "Transaction_userId_fkey";
+ALTER TABLE IF EXISTS "Transaction" DROP CONSTRAINT IF EXISTS "Transaction_userId_fkey";
 
 -- DropForeignKey
-ALTER TABLE "Transaction" DROP CONSTRAINT "Transaction_walletId_fkey";
+ALTER TABLE IF EXISTS "Transaction" DROP CONSTRAINT IF EXISTS "Transaction_walletId_fkey";
 
 -- DropForeignKey
-ALTER TABLE "Wallet" DROP CONSTRAINT "Wallet_userId_fkey";
+ALTER TABLE IF EXISTS "Wallet" DROP CONSTRAINT IF EXISTS "Wallet_userId_fkey";
 
 -- DropTable
-DROP TABLE "Budget";
+DROP TABLE IF EXISTS "Budget";
 
 -- DropTable
-DROP TABLE "Category";
+DROP TABLE IF EXISTS "Category";
 
 -- DropTable
-DROP TABLE "Transaction";
+DROP TABLE IF EXISTS "Transaction";
 
 -- DropTable
-DROP TABLE "User";
+DROP TABLE IF EXISTS "User";
 
 -- DropTable
-DROP TABLE "Wallet";
+DROP TABLE IF EXISTS "Wallet";
+
+-- CreateEnum
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_type WHERE typname = 'TransactionType'
+    ) THEN
+        CREATE TYPE "TransactionType" AS ENUM ('INCOME', 'EXPENSE', 'TRANSFER');
+    END IF;
+END
+$$;
 
 -- CreateTable
 CREATE TABLE "users" (

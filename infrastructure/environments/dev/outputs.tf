@@ -1,8 +1,3 @@
-output "cloudfront_domain" {
-  description = "CNAME/ALIAS tại DNS ngoài trỏ tới domain này (hoặc dùng *.cloudfront.net khi test)"
-  value       = module.cloudfront.distribution_domain_name
-}
-
 output "alb_dns_name" {
   description = "DNS ALB — có thể làm origin thứ 2 của CloudFront cho /api hoặc subdomain api."
   value       = module.alb.alb_dns_name
@@ -21,8 +16,19 @@ output "cognito_client_id" {
   sensitive = false
 }
 
-output "s3_frontend_bucket_id" {
-  value = module.s3_frontend.bucket_id
+output "amplify_default_domain" {
+  description = "Amplify custom domain (or <app-id>.amplifyapp.com if not mapped)"
+  value       = module.amplify.default_domain
+}
+
+output "amplify_app_id" {
+  description = "Amplify app id"
+  value       = module.amplify.app_id
+}
+
+output "amplify_branch_name" {
+  description = "Amplify branch name"
+  value       = module.amplify.branch_name
 }
 
 output "ecs_cluster_name" {
@@ -36,4 +42,9 @@ output "ecs_log_group" {
 output "rds_endpoint" {
   value       = module.rds.db_instance_endpoint
   description = "null nếu create_rds = false"
+}
+
+output "bastion_instance_id" {
+  value       = var.create_bastion ? module.bastion[0].instance_id : null
+  description = "EC2 instance id for SSM port forwarding (null nếu create_bastion = false)"
 }
