@@ -28,6 +28,7 @@ enum NotificationType {
 model User {
   id        String   @id @default(uuid()) @map("user_id")
   email     String   @unique
+  password  String?  // For local JWT auth when Cognito not configured
   name      String?
   cognitoSub String? @unique @map("cognito_sub")
   createdAt DateTime @default(now()) @map("created_at")

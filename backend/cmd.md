@@ -28,5 +28,12 @@ npx prisma migrate dev --name init
 
 ### Mở prisma 
 ```
+docker exec -it spendwise-backend-1 sh
 npx prisma studio --port 5555 --browser none
+```
+
+
+```
+docker compose down -v
+docker builder prune -a -f
 ```

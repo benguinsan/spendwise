@@ -74,12 +74,13 @@ export const userService = {
   },
 
   async getCognitoProfile(): Promise<User> {
-    return await api.auth.getCognitoProfile();
+    const data = await api.auth.getCognitoProfile();
+    return data as User;
   },
 
   async getProfile(): Promise<User | null> {
     try {
-      const profile = await api.auth.getCognitoProfile();
+      const profile = await api.auth.getProfile();
       return profile;
     } catch {
       return null;

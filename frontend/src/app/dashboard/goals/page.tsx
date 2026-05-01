@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { api } from "@/lib/api";
+import { useAuth } from "@/contexts/auth";
 import { useToast } from "@/contexts/toast";
 
 interface Goal {
@@ -14,6 +15,7 @@ interface Goal {
 }
 
 export default function GoalsPage() {
+  const { user } = useAuth();
   const { addToast } = useToast();
   const [goals, setGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
@@ -27,10 +29,12 @@ export default function GoalsPage() {
   });
 
   useEffect(() => {
+    if (!user?.id) return;
+
     const loadGoals = async () => {
       try {
         setLoading(true);
-        const data = await api.goals.getAll();
+        const data = await api.goals.getSummary(user.id);
         setGoals(Array.isArray(data) ? data : []);
       } catch (error) {
         addToast(
@@ -43,10 +47,11 @@ export default function GoalsPage() {
     };
 
     loadGoals();
-  }, [addToast]);
+  }, [user?.id, addToast]);
 
   const handleCreateGoal = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user?.id) return;
     try {
       const goal = await api.goals.create({
         name: formData.name,
@@ -54,6 +59,7 @@ export default function GoalsPage() {
         target: parseFloat(formData.target),
         current: 0,
         deadline: formData.deadline,
+        userId: user.id,
       });
       setGoals([...goals, goal as Goal]);
       setFormData({ name: "", description: "", target: "", deadline: "" });
@@ -68,9 +74,10 @@ export default function GoalsPage() {
   };
 
   const handleDeleteGoal = async (id: string) => {
+    if (!user?.id) return;
     if (!confirm("Are you sure you want to delete this goal?")) return;
     try {
-      await api.goals.delete(id);
+      await api.goals.delete(id, user.id);
       setGoals(goals.filter((g) => g.id !== id));
       addToast("Goal deleted successfully!", "success");
     } catch (error) {
@@ -82,8 +89,11 @@ export default function GoalsPage() {
   };
 
   const handleAddProgress = async (goalId: string, amount: number) => {
+    if (!user?.id) return;
     try {
-      const updatedGoal = await api.goals.updateProgress(goalId, { amount });
+      const updatedGoal = await api.goals.updateProgress(goalId, user.id, {
+        amount,
+      });
       setGoals(goals.map((g) => (g.id === goalId ? (updatedGoal as Goal) : g)));
       addToast("Progress updated successfully!", "success");
     } catch (error) {

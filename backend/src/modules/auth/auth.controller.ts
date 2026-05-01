@@ -13,6 +13,7 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { ConfirmSignupDto } from './dto/confirm-signup.dto';
 import { CognitoJwtAuthGuard } from './guards/cognito-jwt-auth.guard';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import type { Request as ExpressRequest } from 'express';
 
 @Controller('auth')
@@ -35,6 +36,12 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async confirmSignup(@Body() confirmSignupDto: ConfirmSignupDto) {
     return this.authService.confirmSignup(confirmSignupDto);
+  }
+
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  getProfile(@Request() req: ExpressRequest & { user: any }) {
+    return req.user;
   }
 
   @Get('cognito/me')

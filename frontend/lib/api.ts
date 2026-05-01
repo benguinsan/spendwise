@@ -1,22 +1,12 @@
-// API client types and functions
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+// API client with all endpoints
+import { apiClient } from "./api-client";
 
-export class APIError extends Error {
-  constructor(
-    public status: number,
-    message: string,
-  ) {
-    super(message);
-    this.name = "APIError";
-  }
-}
-
-// Generic response types
-interface BaseResponse {
+// Type definitions
+export interface BaseResponse {
   message?: string;
 }
 
-interface User extends BaseResponse {
+export interface User extends BaseResponse {
   id: string;
   email: string;
   name?: string | null;
@@ -24,7 +14,7 @@ interface User extends BaseResponse {
   updatedAt?: string;
 }
 
-interface AuthResponse extends BaseResponse {
+export interface AuthResponse extends BaseResponse {
   provider: string;
   user?: User;
   userConfirmed: boolean;
@@ -34,259 +24,313 @@ interface AuthResponse extends BaseResponse {
   expiresIn?: number;
 }
 
-interface PaginatedResponse<T> {
+export interface PaginatedResponse<T> {
   data: T[];
   total: number;
   page: number;
   pageSize: number;
 }
 
-interface Wallet extends BaseResponse {
+export interface Wallet extends BaseResponse {
   id: string;
   name: string;
   balance: number;
   currency: string;
-  userId: string;
+  userId?: string;
 }
 
-interface Transaction extends BaseResponse {
+export interface Transaction extends BaseResponse {
   id: string;
   amount: number;
   type: string;
   note?: string;
   date: string;
-  userId: string;
+  userId?: string;
+  walletId?: string;
+  fromWalletId?: string;
+  toWalletId?: string;
 }
 
-interface Category extends BaseResponse {
+export interface Category extends BaseResponse {
   id: string;
   name: string;
   type: string;
   icon?: string;
+  userId?: string;
 }
 
-interface Budget extends BaseResponse {
+export interface Budget extends BaseResponse {
   id: string;
   amount: number;
   month: number;
   year: number;
+  userId?: string;
 }
 
-interface Tag extends BaseResponse {
+export interface Tag extends BaseResponse {
   id: string;
   name: string;
+  userId?: string;
 }
 
-interface Goal extends BaseResponse {
+export interface Goal extends BaseResponse {
   id: string;
   name: string;
   description?: string;
   target: number;
   current: number;
   deadline: string;
+  userId?: string;
 }
 
-interface Notification extends BaseResponse {
+export interface Notification extends BaseResponse {
   id: string;
   type: string;
   message: string;
   isRead: boolean;
+  userId?: string;
+  createdAt?: string;
 }
 
-interface RecurringTransaction extends BaseResponse {
+export interface RecurringTransaction extends BaseResponse {
   id: string;
   amount: number;
   type: string;
   interval: string;
   nextDate: string;
   isActive: boolean;
+  userId?: string;
+  walletId?: string;
+  note?: string;
 }
 
-async function apiCall<T>(
-  endpoint: string,
-  method: "GET" | "POST" | "PATCH" | "PUT" | "DELETE" = "GET",
-  body?: unknown,
-  headers?: Record<string, string>,
-): Promise<T> {
-  const url = `${API_BASE_URL}${endpoint}`;
-
-  const defaultHeaders: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
-
-  // Add auth token if available
-  if (typeof window !== "undefined") {
-    const token = localStorage.getItem("auth_token");
-    if (token) {
-      defaultHeaders["Authorization"] = `Bearer ${token}`;
-    }
-  }
-
-  const fetchOptions: RequestInit = {
-    method,
-    headers: { ...defaultHeaders, ...headers },
-  };
-
-  if (body) {
-    fetchOptions.body = JSON.stringify(body);
-  }
-
-  try {
-    const response = await fetch(url, fetchOptions);
-
-    if (!response.ok) {
-      const data = (await response.json().catch(() => ({}))) as Record<
-        string,
-        unknown
-      >;
-      const message =
-        typeof data.message === "string"
-          ? data.message
-          : `HTTP ${response.status}`;
-      throw new APIError(response.status, message);
-    }
-
-    return (await response.json()) as T;
-  } catch (error) {
-    if (error instanceof APIError) {
-      throw error;
-    }
-    throw new Error(
-      `API request failed: ${error instanceof Error ? error.message : "Unknown error"}`,
-    );
-  }
-}
-
+// API endpoints
 export const api = {
+  // Health check
+  health: {
+    check: () => apiClient.get<{ status: string; timestamp: string }>("/health"),
+  },
+
+  // Authentication
   auth: {
     register: (data: { email: string; password: string; name?: string }) =>
-      apiCall<AuthResponse>("/auth/register", "POST", data),
+      apiClient.post<AuthResponse>("/auth/register", data, { skipAuth: true }),
+    
     login: (data: { email: string; password: string }) =>
-      apiCall<AuthResponse>("/auth/login", "POST", data),
+      apiClient.post<AuthResponse>("/auth/login", data, { skipAuth: true }),
+    
     confirmSignup: (data: { email: string; confirmationCode: string }) =>
-      apiCall<AuthResponse>("/auth/confirm-signup", "POST", data),
-    getCognitoProfile: () => apiCall<User>("/auth/cognito/me", "GET"),
+      apiClient.post<AuthResponse>("/auth/confirm-signup", data, { skipAuth: true }),
+    
+    getProfile: () => apiClient.get<User>("/auth/me"),
+    
+    getCognitoProfile: () => apiClient.get<User>("/auth/cognito/me"),
   },
+
+  // Users
   users: {
     getAll: (skip = 0, take = 10) =>
-      apiCall<PaginatedResponse<User>>(
-        `/users?skip=${skip}&take=${take}`,
-        "GET",
-      ),
-    getOne: (id: string) => apiCall<User>(`/users/${id}`, "GET"),
-    create: (data: Partial<User>) => apiCall<User>("/users", "POST", data),
+      apiClient.get<PaginatedResponse<User>>(`/users?skip=${skip}&take=${take}`),
+    
+    getOne: (id: string) => apiClient.get<User>(`/users/${id}`),
+    
+    create: (data: Partial<User>) => apiClient.post<User>("/users", data),
+    
     update: (id: string, data: Partial<User>) =>
-      apiCall<User>(`/users/${id}`, "PATCH", data),
-    delete: (id: string) => apiCall<BaseResponse>(`/users/${id}`, "DELETE"),
+      apiClient.patch<User>(`/users/${id}`, data),
+    
+    delete: (id: string) => apiClient.delete<BaseResponse>(`/users/${id}`),
   },
+
+  // Wallets
   wallets: {
-    getAll: () => apiCall<Wallet[]>("/wallets", "GET"),
+    getAll: () => apiClient.get<Wallet[]>("/wallets"),
+    
     getByUser: (userId: string) =>
-      apiCall<Wallet[]>(`/wallets/user/${userId}`, "GET"),
-    getOne: (id: string) => apiCall<Wallet>(`/wallets/${id}`, "GET"),
-    create: (data: Partial<Wallet>) =>
-      apiCall<Wallet>("/wallets", "POST", data),
+      apiClient.get<Wallet[]>(`/wallets/user/${userId}`),
+    
+    getOne: (id: string) => apiClient.get<Wallet>(`/wallets/${id}`),
+    
+    create: (data: Partial<Wallet>) => apiClient.post<Wallet>("/wallets", data),
+    
     update: (id: string, data: Partial<Wallet>) =>
-      apiCall<Wallet>(`/wallets/${id}`, "PATCH", data),
-    delete: (id: string) => apiCall<BaseResponse>(`/wallets/${id}`, "DELETE"),
+      apiClient.patch<Wallet>(`/wallets/${id}`, data),
+    
+    delete: (id: string) => apiClient.delete<BaseResponse>(`/wallets/${id}`),
   },
+
+  // Transactions
   transactions: {
-    getAll: () => apiCall<Transaction[]>("/transactions", "GET"),
+    getAll: () => apiClient.get<Transaction[]>("/transactions"),
+    
     getByUser: (userId: string) =>
-      apiCall<Transaction[]>(`/transactions/user/${userId}`, "GET"),
+      apiClient.get<Transaction[]>(`/transactions/user/${userId}`),
+    
     getByWallet: (walletId: string) =>
-      apiCall<Transaction[]>(`/transactions/wallet/${walletId}`, "GET"),
-    getOne: (id: string) => apiCall<Transaction>(`/transactions/${id}`, "GET"),
+      apiClient.get<Transaction[]>(`/transactions/wallet/${walletId}`),
+    
+    getOne: (id: string) => apiClient.get<Transaction>(`/transactions/${id}`),
+    
     create: (data: Partial<Transaction>) =>
-      apiCall<Transaction>("/transactions", "POST", data),
+      apiClient.post<Transaction>("/transactions", data),
+    
     update: (id: string, data: Partial<Transaction>) =>
-      apiCall<Transaction>(`/transactions/${id}`, "PATCH", data),
+      apiClient.patch<Transaction>(`/transactions/${id}`, data),
+    
     delete: (id: string) =>
-      apiCall<BaseResponse>(`/transactions/${id}`, "DELETE"),
+      apiClient.delete<BaseResponse>(`/transactions/${id}`),
   },
+
+  // Categories
   categories: {
-    getAll: () => apiCall<Category[]>("/categories", "GET"),
+    getAll: () => apiClient.get<Category[]>("/categories"),
+    
     getByType: (type: string) =>
-      apiCall<Category[]>(`/categories/type/${type}`, "GET"),
-    getDefaults: () => apiCall<Category[]>("/categories/defaults", "GET"),
-    getOne: (id: string) => apiCall<Category>(`/categories/${id}`, "GET"),
+      apiClient.get<Category[]>(`/categories/type/${type}`),
+    
+    getDefaults: () => apiClient.get<Category[]>("/categories/defaults"),
+    
+    getOne: (id: string) => apiClient.get<Category>(`/categories/${id}`),
+    
     create: (data: Partial<Category>) =>
-      apiCall<Category>("/categories", "POST", data),
+      apiClient.post<Category>("/categories", data),
+    
     update: (id: string, data: Partial<Category>) =>
-      apiCall<Category>(`/categories/${id}`, "PATCH", data),
+      apiClient.patch<Category>(`/categories/${id}`, data),
+    
     delete: (id: string) =>
-      apiCall<BaseResponse>(`/categories/${id}`, "DELETE"),
+      apiClient.delete<BaseResponse>(`/categories/${id}`),
   },
+
+  // Budgets
   budgets: {
-    getAll: () => apiCall<Budget[]>("/budgets", "GET"),
+    getAll: () => apiClient.get<Budget[]>("/budgets"),
+    
     getByUser: (userId: string) =>
-      apiCall<Budget[]>(`/budgets/user/${userId}`, "GET"),
-    getOne: (id: string) => apiCall<Budget>(`/budgets/${id}`, "GET"),
-    create: (data: Partial<Budget>) =>
-      apiCall<Budget>("/budgets", "POST", data),
+      apiClient.get<Budget[]>(`/budgets/user/${userId}`),
+    
+    getOne: (id: string) => apiClient.get<Budget>(`/budgets/${id}`),
+    
+    create: (data: Partial<Budget>) => apiClient.post<Budget>("/budgets", data),
+    
     update: (id: string, data: Partial<Budget>) =>
-      apiCall<Budget>(`/budgets/${id}`, "PATCH", data),
-    delete: (id: string) => apiCall<BaseResponse>(`/budgets/${id}`, "DELETE"),
+      apiClient.patch<Budget>(`/budgets/${id}`, data),
+    
+    delete: (id: string) => apiClient.delete<BaseResponse>(`/budgets/${id}`),
   },
+
+  // Tags
   tags: {
-    getAll: () => apiCall<Tag[]>("/tags", "GET"),
-    getOne: (id: string) => apiCall<Tag>(`/tags/${id}`, "GET"),
+    getAll: () => apiClient.get<Tag[]>("/tags"),
+    
+    getOne: (id: string) => apiClient.get<Tag>(`/tags/${id}`),
+    
     getTransactions: (id: string) =>
-      apiCall<Transaction[]>(`/tags/${id}/transactions`, "GET"),
-    create: (data: Partial<Tag>) => apiCall<Tag>("/tags", "POST", data),
+      apiClient.get<Transaction[]>(`/tags/${id}/transactions`),
+    
+    create: (data: Partial<Tag>) => apiClient.post<Tag>("/tags", data),
+    
     update: (id: string, data: Partial<Tag>) =>
-      apiCall<Tag>(`/tags/${id}`, "PATCH", data),
-    delete: (id: string) => apiCall<BaseResponse>(`/tags/${id}`, "DELETE"),
+      apiClient.patch<Tag>(`/tags/${id}`, data),
+    
+    delete: (id: string) => apiClient.delete<BaseResponse>(`/tags/${id}`),
   },
+
+  // Goals
   goals: {
-    getAll: () => apiCall<Goal[]>("/goals", "GET"),
+    getAll: (userId: string) =>
+      apiClient.get<Goal[]>(`/goals?userId=${userId}`),
+    
     getSummary: (userId: string) =>
-      apiCall<Goal[]>(`/goals/summary/${userId}`, "GET"),
-    getOne: (id: string) => apiCall<Goal>(`/goals/${id}`, "GET"),
-    create: (data: Partial<Goal>) => apiCall<Goal>("/goals", "POST", data),
-    update: (id: string, data: Partial<Goal>) =>
-      apiCall<Goal>(`/goals/${id}`, "PATCH", data),
-    updateProgress: (id: string, data: { amount: number }) =>
-      apiCall<Goal>(`/goals/${id}/progress`, "POST", data),
-    delete: (id: string) => apiCall<BaseResponse>(`/goals/${id}`, "DELETE"),
+      apiClient.get<Goal[]>(`/goals/summary/${userId}`),
+    
+    getOne: (id: string, userId: string) =>
+      apiClient.get<Goal>(`/goals/${id}?userId=${userId}`),
+    
+    create: (data: Partial<Goal>) => apiClient.post<Goal>("/goals", data),
+    
+    update: (id: string, userId: string, data: Partial<Goal>) =>
+      apiClient.patch<Goal>(`/goals/${id}?userId=${userId}`, data),
+    
+    updateProgress: (id: string, userId: string, data: { amount: number }) =>
+      apiClient.post<Goal>(`/goals/${id}/progress?userId=${userId}`, data),
+    
+    delete: (id: string, userId: string) =>
+      apiClient.delete<BaseResponse>(`/goals/${id}?userId=${userId}`),
   },
+
+  // Notifications
   notifications: {
-    getAll: () => apiCall<Notification[]>("/notifications", "GET"),
+    getAll: (userId: string) =>
+      apiClient.get<Notification[]>(`/notifications?userId=${userId}`),
+    
     getSummary: (userId: string) =>
-      apiCall<Notification[]>(`/notifications/summary/${userId}`, "GET"),
-    getOne: (id: string) =>
-      apiCall<Notification>(`/notifications/${id}`, "GET"),
-    markAsRead: (id: string) =>
-      apiCall<BaseResponse>(`/notifications/${id}/read`, "PATCH"),
-    markAllAsRead: () =>
-      apiCall<BaseResponse>("/notifications/batch/read-all", "PATCH"),
-    delete: (id: string) =>
-      apiCall<BaseResponse>(`/notifications/${id}`, "DELETE"),
-    deleteAll: () => apiCall<BaseResponse>("/notifications", "DELETE"),
-  },
-  recurringTransactions: {
-    getAll: () =>
-      apiCall<RecurringTransaction[]>("/recurring-transactions", "GET"),
-    getOne: (id: string) =>
-      apiCall<RecurringTransaction>(`/recurring-transactions/${id}`, "GET"),
-    getNextExecutions: (id: string) =>
-      apiCall<RecurringTransaction[]>(
-        `/recurring-transactions/${id}/next-executions`,
-        "GET",
+      apiClient.get<Notification[]>(`/notifications/summary/${userId}`),
+    
+    getOne: (id: string, userId: string) =>
+      apiClient.get<Notification>(`/notifications/${id}?userId=${userId}`),
+    
+    markAsRead: (id: string, userId: string) =>
+      apiClient.patch<BaseResponse>(
+        `/notifications/${id}/read?userId=${userId}`,
       ),
+    
+    markAllAsRead: (userId: string) =>
+      apiClient.patch<BaseResponse>(
+        `/notifications/batch/read-all?userId=${userId}`,
+      ),
+    
+    delete: (id: string, userId: string) =>
+      apiClient.delete<BaseResponse>(`/notifications/${id}?userId=${userId}`),
+    
+    deleteAll: (userId: string) =>
+      apiClient.delete<BaseResponse>(`/notifications?userId=${userId}`),
+  },
+
+  // Recurring Transactions
+  recurringTransactions: {
+    getAll: (userId: string) =>
+      apiClient.get<RecurringTransaction[]>(
+        `/recurring-transactions?userId=${userId}`,
+      ),
+    
+    getOne: (id: string, userId: string) =>
+      apiClient.get<RecurringTransaction>(
+        `/recurring-transactions/${id}?userId=${userId}`,
+      ),
+    
+    getNextExecutions: (id: string, userId: string, count = 5) =>
+      apiClient.get<RecurringTransaction[]>(
+        `/recurring-transactions/${id}/next-executions?userId=${userId}&count=${count}`,
+      ),
+    
     create: (data: Partial<RecurringTransaction>) =>
-      apiCall<RecurringTransaction>("/recurring-transactions", "POST", data),
-    update: (id: string, data: Partial<RecurringTransaction>) =>
-      apiCall<RecurringTransaction>(
-        `/recurring-transactions/${id}`,
-        "PATCH",
+      apiClient.post<RecurringTransaction>("/recurring-transactions", data),
+    
+    update: (
+      id: string,
+      userId: string,
+      data: Partial<RecurringTransaction>,
+    ) =>
+      apiClient.patch<RecurringTransaction>(
+        `/recurring-transactions/${id}?userId=${userId}`,
         data,
       ),
-    toggle: (id: string) =>
-      apiCall<BaseResponse>(`/recurring-transactions/${id}/toggle`, "PATCH"),
-    delete: (id: string) =>
-      apiCall<BaseResponse>(`/recurring-transactions/${id}`, "DELETE"),
+    
+    toggle: (id: string, userId: string, isActive: boolean) =>
+      apiClient.patch<BaseResponse>(
+        `/recurring-transactions/${id}/toggle?userId=${userId}`,
+        { isActive },
+      ),
+    
+    delete: (id: string, userId: string) =>
+      apiClient.delete<BaseResponse>(
+        `/recurring-transactions/${id}?userId=${userId}`,
+      ),
   },
 };
 
 export default api;
+
+// Re-export errors for convenience
+export { APIError, NetworkError } from "./api-client";

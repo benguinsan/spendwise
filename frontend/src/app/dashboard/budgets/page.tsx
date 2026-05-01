@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { api } from "@/lib/api";
+import { useAuth } from "@/contexts/auth";
 import { useToast } from "@/contexts/toast";
 
 interface Budget {
@@ -12,6 +13,7 @@ interface Budget {
 }
 
 export default function BudgetsPage() {
+  const { user } = useAuth();
   const { addToast } = useToast();
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [loading, setLoading] = useState(true);
@@ -23,10 +25,12 @@ export default function BudgetsPage() {
   });
 
   useEffect(() => {
+    if (!user?.id) return;
+
     const loadData = async () => {
       try {
         setLoading(true);
-        const budgetsData = await api.budgets.getAll();
+        const budgetsData = await api.budgets.getByUser(user.id);
         setBudgets(Array.isArray(budgetsData) ? budgetsData : []);
       } catch (error) {
         addToast(
@@ -39,15 +43,17 @@ export default function BudgetsPage() {
     };
 
     loadData();
-  }, [addToast]);
+  }, [user?.id, addToast]);
 
   const handleCreateBudget = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user?.id) return;
     try {
       const budget = await api.budgets.create({
         amount: parseFloat(formData.amount),
         month: formData.month,
         year: formData.year,
+        userId: user.id,
       });
       setBudgets([...budgets, budget as Budget]);
       setFormData({

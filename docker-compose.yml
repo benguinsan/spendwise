@@ -1,48 +1,78 @@
 services:
   postgres:
-    env_file: "./docker-compose-env/database.env"
     image: postgres:16-alpine
+    env_file: "./docker-compose-env/database.env"
     ports:
       - "54321:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./database/init.sql:/docker-entrypoint-initdb.d/01-init.sql
-      
-  nginx:
-    restart: always
-    depends_on:
-      - backend
-      - frontend
-    build:
-      dockerfile: Dockerfile
-      context: ./nginx
-    ports:
-      - "3000:80"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d spendwise"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - spendwise-network
 
   backend:
+    build:
+      dockerfile: Dockerfile
+      context: backend
     env_file:
       - path: "./docker-compose-env/database.env"
       - path: "./docker-compose-env/backend.env"
     depends_on:
-      - postgres
-    build:
-      dockerfile: Dockerfile
-      context: backend
-    volumes:
-      - /app/node_modules
-      - ./backend:/app
+      postgres:
+        condition: service_healthy
     ports:
-      - "5001:5000"
-      - '5555:5555'
+      - "5000:5000"
+      - "5555:5555"
+    # Removed volume mount for production - use built code from Dockerfile
+    # For development, uncomment the following lines:
+    # volumes:
+    #   - /app/node_modules
+    #   - ./backend:/app
+    networks:
+      - spendwise-network
+    restart: unless-stopped
 
   frontend:
-    stdin_open: true
     build:
       dockerfile: Dockerfile
       context: ./frontend
-    volumes:
-      - /app/node_modules
-      - ./frontend:/app
+    stdin_open: true
+    depends_on:
+      - backend
+    # Removed volume mount for production - use built code from Dockerfile
+    # For development, uncomment the following lines:
+    # volumes:
+    #   - /app/node_modules
+    #   - /app/.next
+    #   - ./frontend:/app
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=/api
+    networks:
+      - spendwise-network
+    restart: unless-stopped
+
+  nginx:
+    build:
+      dockerfile: Dockerfile
+      context: ./nginx
+    depends_on:
+      - backend
+      - frontend
+    ports:
+      - "3000:80"
+    networks:
+      - spendwise-network
+    restart: always
 
 volumes:
   postgres_data:
+
+networks:
+  spendwise-network:
+    driver: bridge
