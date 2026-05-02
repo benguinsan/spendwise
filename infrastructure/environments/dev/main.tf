@@ -4,11 +4,14 @@ data "aws_availability_zones" "available" {
 
 locals {
   azs = slice(data.aws_availability_zones.available.names, 0, 2)
+
+  db_password_effective = var.create_rds ? module.db_password_secret[0].password : ""
+
   # Build DATABASE_URL for the Cognito PostConfirmation Lambda.
-  cognito_post_confirmation_database_url = var.create_rds && module.rds.db_instance_endpoint != null ? "postgresql://${var.db_username}:${var.db_password}@${module.rds.db_instance_endpoint}/${var.db_name}?sslmode=no-verify&schema=public" : null
+  cognito_post_confirmation_database_url = var.create_rds && module.rds.db_instance_endpoint != null ? "postgresql://${var.db_username}:${local.db_password_effective}@${module.rds.db_instance_endpoint}/${var.db_name}?sslmode=no-verify&schema=public" : null
   # Next.js frontend needs backend base URL for calls to /auth, /users, /wallets, ...
-  # frontend_api_url = var.alb_acm_certificate_arn != "" ? "https://${module.alb.alb_dns_name}" : "http://${module.alb.alb_dns_name}"
-  frontend_api_url = "https://${module.alb.alb_dns_name}"
+  # ALB TLS: set alb_acm_certificate_arn (ACM in same region as ALB; validate DNS at your registrar).
+  frontend_api_url = trimspace(var.alb_acm_certificate_arn) != "" ? "https://${module.alb.alb_dns_name}" : "http://${module.alb.alb_dns_name}"
   # Application Auto Scaling — ALBRequestCountPerTarget (suffix sau loadbalancer/ + targetgroup/...)
   ecs_alb_request_count_resource_label = format(
     "%s/targetgroup/%s",
@@ -20,7 +23,7 @@ locals {
     var.create_rds && module.rds.db_instance_endpoint != null ? [
       {
         name  = "DATABASE_URL"
-        value = "postgresql://${var.db_username}:${var.db_password}@${module.rds.db_instance_endpoint}/${var.db_name}?sslmode=no-verify&schema=public"
+        value = "postgresql://${var.db_username}:${local.db_password_effective}@${module.rds.db_instance_endpoint}/${var.db_name}?sslmode=no-verify&schema=public"
       }
     ] : [],
     var.ecs_backend_environment,
@@ -31,7 +34,6 @@ locals {
     ]
   )
 }
-
 
 module "vpc" {
   source = "../../modules/vpc"
@@ -124,6 +126,17 @@ module "monitoring" {
   environment  = var.environment
 }
 
+module "db_password_secret" {
+  count  = var.create_rds ? 1 : 0
+  source = "../../modules/db_password_secret"
+
+  project_name       = var.project_name
+  environment        = var.environment
+  plaintext_password = var.db_password
+
+  recovery_window_in_days = var.db_password_secret_recovery_window_days
+}
+
 module "alb" {
   source = "../../modules/alb"
 
@@ -134,10 +147,46 @@ module "alb" {
   alb_security_group_id = module.security_groups.alb_security_group_id
   container_port        = var.app_container_port
   health_check_path     = var.alb_health_check_path
+  enable_https_listener = trimspace(var.alb_acm_certificate_arn) != ""
+  acm_certificate_arn   = var.alb_acm_certificate_arn
+}
+
+# Optional public hosted zone for Amplify custom domain (CNAME/verification records).
+# Delegate NS from the parent zone to amplify_route53_name_servers when creating a child zone.
+resource "aws_route53_zone" "amplify" {
+  count = var.enable_amplify_hosted_zone ? 1 : 0
+  name  = var.amplify_hosted_zone_name
+
+  lifecycle {
+    precondition {
+      condition     = trimspace(var.amplify_hosted_zone_name) != ""
+      error_message = "When enable_amplify_hosted_zone is true, set amplify_hosted_zone_name (e.g. app.dev.example.com)."
+    }
+  }
+
+  tags = {
+    Name        = "${var.project_name}-${var.environment}-amplify-dns"
+    Purpose     = "amplify-custom-domain"
+    Environment = var.environment
+  }
+}
+
+module "waf_alb" {
+  count  = var.enable_waf ? 1 : 0
+  source = "../../modules/waf_alb"
+
+  project_name = var.project_name
+  environment  = var.environment
+  alb_arn      = module.alb.alb_arn
+
+  enable_cloudwatch_metrics = var.waf_enable_cloudwatch_metrics
 }
 
 module "ecs" {
   source = "../../modules/ecs"
+
+  # Wait until ALB listeners exist (HTTP may redirect to 443 until HTTPS exists).
+  depends_on = [module.alb]
 
   project_name = var.project_name
   environment  = var.environment
@@ -169,7 +218,7 @@ module "rds" {
   rds_security_group_id   = module.security_groups.rds_security_group_id
   db_name                 = var.db_name
   db_username             = var.db_username
-  db_password             = var.db_password
+  db_password             = local.db_password_effective
 }
 
 module "bastion" {

@@ -9,7 +9,7 @@ terraform {
 
 locals {
   name         = "${var.project_name}-${var.environment}"
-  enable_https = trimspace(var.acm_certificate_arn) != ""
+  enable_https = var.enable_https_listener
 }
 
 resource "aws_lb" "this" {
@@ -76,6 +76,13 @@ resource "aws_lb_listener" "https" {
   protocol          = "HTTPS"
   ssl_policy        = "ELBSecurityPolicy-TLS13-1-2-2021-06"
   certificate_arn   = var.acm_certificate_arn
+
+  lifecycle {
+    precondition {
+      condition     = trimspace(var.acm_certificate_arn) != ""
+      error_message = "When enable_https_listener is true, acm_certificate_arn must be a non-empty ACM certificate ARN in the same region as the ALB."
+    }
+  }
 
   default_action {
     type             = "forward"

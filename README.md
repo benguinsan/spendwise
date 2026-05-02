@@ -57,50 +57,90 @@ terraform -chdir="infrastructure/environments/dev" destroy -var-file="terraform.
 
 ## Build and Push Backend Image to ECR
 
-1) Get ECR repository URL from Terraform output:
+Run from project root. Use the same `aws_region` as in `infrastructure/environments/dev/terraform.tfvars` for `REGION` below.
+
+1) Read values from Terraform (ECR, ECS, networking):
 
 ```bash
 terraform -chdir="infrastructure/environments/dev" output -raw ecr_repository_url
+terraform -chdir="infrastructure/environments/dev" output -raw ecs_cluster_name
+terraform -chdir="infrastructure/environments/dev" output -raw ecs_service_name
+terraform -chdir="infrastructure/environments/dev" output -raw ecs_task_definition_family
+terraform -chdir="infrastructure/environments/dev" output -raw ecs_private_app_subnet_ids_csv
+terraform -chdir="infrastructure/environments/dev" output -raw ecs_tasks_security_group_id
+terraform -chdir="infrastructure/environments/dev" output -raw ecs_fargate_assign_public_ip
 ```
 
-2) Login Docker to ECR:
+2) Set shell variables (replace `TAG` so it matches `ecs_backend_image_tag` in `terraform.tfvars`, or update that variable after changing the tag):
 
 ```bash
-aws ecr get-login-password --region <aws-region> \
-  | docker login --username AWS --password-stdin <aws-account-id>.dkr.ecr.<aws-region>.amazonaws.com
+export TF_DIR="infrastructure/environments/dev"
+export TAG=v3
+export ECR_URL=$(terraform -chdir="$TF_DIR" output -raw ecr_repository_url)
+export CLUSTER=$(terraform -chdir="$TF_DIR" output -raw ecs_cluster_name)
+export SERVICE=$(terraform -chdir="$TF_DIR" output -raw ecs_service_name)
+export TASK_FAMILY=$(terraform -chdir="$TF_DIR" output -raw ecs_task_definition_family)
+export SUBNETS=$(terraform -chdir="$TF_DIR" output -raw ecs_private_app_subnet_ids_csv)
+export ECS_SG=$(terraform -chdir="$TF_DIR" output -raw ecs_tasks_security_group_id)
+export ASSIGN_PUBLIC=$(terraform -chdir="$TF_DIR" output -raw ecs_fargate_assign_public_ip)
+export REGION=<aws-region>
+export REGISTRY="${ECR_URL%%/*}"
 ```
 
-3) Build and push image:
+3) Login Docker to ECR:
 
 ```bash
-docker build -t spendwise-backend:latest ./backend
-docker tag spendwise-backend:latest <ecr_repository_url>:<image_tag>
-docker push <ecr_repository_url>:<image_tag>
+aws ecr get-login-password --region "$REGION" \
+  | docker login --username AWS --password-stdin "$REGISTRY"
 ```
 
-4) Update Terraform variable `ecs_backend_image_tag` and apply again.
-
-## Run First Database Migration
-
-After RDS is up and backend image is available, run migration in ECS one-off task.
-
-Example command:
+4) Build and push image (`linux/amd64` matches the backend Dockerfile):
 
 ```bash
-aws ecs run-task \
-  --cluster <ecs_cluster_name> \
+docker build --platform linux/amd64 -t "spendwise-backend:${TAG}" ./backend
+docker tag "spendwise-backend:${TAG}" "${ECR_URL}:${TAG}"
+docker push "${ECR_URL}:${TAG}"
+```
+
+5) If `TAG` changed, set `ecs_backend_image_tag` in `terraform.tfvars` to the same value, then apply:
+
+```bash
+terraform -chdir="infrastructure/environments/dev" apply -var-file="terraform.tfvars"
+```
+
+## Run Database Migration (ECS one-off task)
+
+After RDS is up and the task definition includes `DATABASE_URL`, you can run Prisma against the live DB. The backend `start.sh` also runs `prisma migrate deploy` on each container start; use this when you want migrations only.
+
+1) Re-use `REGION`, `CLUSTER`, `TASK_FAMILY`, `SUBNETS`, `ECS_SG`, `ASSIGN_PUBLIC` from the section above (same `export` block).
+
+2) Start the task and wait until it stops:
+
+```bash
+export TASK_ARN=$(aws ecs run-task \
+  --region "$REGION" \
+  --cluster "$CLUSTER" \
   --launch-type FARGATE \
-  --task-definition <task_definition_arn_or_family> \
-  --network-configuration "awsvpcConfiguration={subnets=[<subnet-1>,<subnet-2>],securityGroups=[<ecs-sg>],assignPublicIp=DISABLED}" \
-  --overrides '{"containerOverrides":[{"name":"backend","command":["npx","prisma","migrate","deploy"]}]}'
+  --task-definition "$TASK_FAMILY" \
+  --network-configuration "awsvpcConfiguration={subnets=[${SUBNETS}],securityGroups=[${ECS_SG}],assignPublicIp=${ASSIGN_PUBLIC}}" \
+  --overrides '{"containerOverrides":[{"name":"backend","command":["npx","prisma","migrate","deploy"]}]}' \
+  --query 'tasks[0].taskArn' \
+  --output text)
+
+aws ecs wait tasks-stopped --region "$REGION" --cluster "$CLUSTER" --tasks "$TASK_ARN"
+aws ecs describe-tasks --region "$REGION" --cluster "$CLUSTER" --tasks "$TASK_ARN" \
+  --query 'tasks[0].containers[0].exitCode' --output text
 ```
 
-Then force new deployment:
+- Exit code `0` means success. On failure, inspect the stopped task and logs: `terraform -chdir="infrastructure/environments/dev" output -raw ecs_log_group`.
+
+3) Force ECS to roll out tasks (new image or new task definition):
 
 ```bash
 aws ecs update-service \
-  --cluster <ecs_cluster_name> \
-  --service <ecs_service_name> \
+  --region "$REGION" \
+  --cluster "$CLUSTER" \
+  --service "$SERVICE" \
   --force-new-deployment
 ```
 

@@ -99,11 +99,14 @@ module "alb" {
   alb_security_group_id = module.security_groups.alb_security_group_id
   container_port        = var.app_container_port
   health_check_path     = var.alb_health_check_path
+  enable_https_listener = trimspace(var.alb_acm_certificate_arn) != ""
   acm_certificate_arn   = var.alb_acm_certificate_arn
 }
 
 module "ecs" {
   source = "../../modules/ecs"
+
+  depends_on = [module.alb]
 
   project_name = var.project_name
   environment  = var.environment
