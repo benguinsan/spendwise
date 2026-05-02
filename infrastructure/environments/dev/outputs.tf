@@ -34,6 +34,31 @@ output "ecs_cluster_name" {
   value = module.ecs.cluster_name
 }
 
+output "ecs_service_name" {
+  value       = module.ecs.service_name
+  description = "ECS backend service name (aws ecs update-service --force-new-deployment)."
+}
+
+output "ecs_task_definition_family" {
+  value       = module.ecs.task_definition_family
+  description = "Task definition family for aws ecs run-task (latest active revision)."
+}
+
+output "ecs_private_app_subnet_ids_csv" {
+  value       = join(",", module.vpc.private_app_subnet_ids)
+  description = "Comma-separated private app subnet IDs for Fargate awsvpc."
+}
+
+output "ecs_tasks_security_group_id" {
+  value       = module.security_groups.ecs_tasks_security_group_id
+  description = "Security group attached to ECS tasks (same as running service)."
+}
+
+output "ecs_fargate_assign_public_ip" {
+  value       = var.ecs_assign_public_ip ? "ENABLED" : "DISABLED"
+  description = "ENABLED or DISABLED for assignPublicIp in run-task / service network."
+}
+
 output "ecs_log_group" {
   value = module.monitoring.ecs_log_group_name
 }
