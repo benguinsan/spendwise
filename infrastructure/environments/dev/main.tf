@@ -89,7 +89,6 @@ applications:
         baseDirectory: .next
         files:
           - '**/*'
-        discard-paths: yes
       cache:
         paths:
           - node_modules/**/*

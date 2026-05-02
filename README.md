@@ -57,7 +57,15 @@ terraform -chdir="infrastructure/environments/dev" destroy -var-file="terraform.
 
 ## Build and Push Backend Image to ECR
 
-Run from project root. Use the same `aws_region` as in `infrastructure/environments/dev/terraform.tfvars` for `REGION` below.
+Run from project root.
+
+**If `terraform output -raw …` says an output is not in state** (you added outputs in code but have not refreshed state yet), run once:
+
+```bash
+terraform -chdir="infrastructure/environments/dev" apply -refresh-only -var-file="terraform.tfvars"
+```
+
+(or a normal `apply` with the same `-var-file`). After that, all `output -raw` commands below work.
 
 1) Read values from Terraform (ECR, ECS, networking):
 
@@ -69,6 +77,7 @@ terraform -chdir="infrastructure/environments/dev" output -raw ecs_task_definiti
 terraform -chdir="infrastructure/environments/dev" output -raw ecs_private_app_subnet_ids_csv
 terraform -chdir="infrastructure/environments/dev" output -raw ecs_tasks_security_group_id
 terraform -chdir="infrastructure/environments/dev" output -raw ecs_fargate_assign_public_ip
+terraform -chdir="infrastructure/environments/dev" output -raw aws_region
 ```
 
 2) Set shell variables (replace `TAG` so it matches `ecs_backend_image_tag` in `terraform.tfvars`, or update that variable after changing the tag):
@@ -83,7 +92,7 @@ export TASK_FAMILY=$(terraform -chdir="$TF_DIR" output -raw ecs_task_definition_
 export SUBNETS=$(terraform -chdir="$TF_DIR" output -raw ecs_private_app_subnet_ids_csv)
 export ECS_SG=$(terraform -chdir="$TF_DIR" output -raw ecs_tasks_security_group_id)
 export ASSIGN_PUBLIC=$(terraform -chdir="$TF_DIR" output -raw ecs_fargate_assign_public_ip)
-export REGION=<aws-region>
+export REGION=$(terraform -chdir="$TF_DIR" output -raw aws_region)
 export REGISTRY="${ECR_URL%%/*}"
 ```
 
@@ -112,7 +121,20 @@ terraform -chdir="infrastructure/environments/dev" apply -var-file="terraform.tf
 
 After RDS is up and the task definition includes `DATABASE_URL`, you can run Prisma against the live DB. The backend `start.sh` also runs `prisma migrate deploy` on each container start; use this when you want migrations only.
 
-1) Re-use `REGION`, `CLUSTER`, `TASK_FAMILY`, `SUBNETS`, `ECS_SG`, `ASSIGN_PUBLIC` from the section above (same `export` block).
+`backend/prisma/migrations` is a **single baseline** (`20260503120000_spendwise_schema_init`) aligned with `schema.prisma` (including `users.user_id` and budget partial unique indexes). If RDS still has rows from the **old** migration history or a failed `_prisma_migrations` state, reset the dev database (e.g. `DROP SCHEMA public CASCADE; CREATE SCHEMA public;`) once, then run `migrate deploy` again.
+
+1) Load the same variables as for ECR (includes `REGION` from `aws_region` output). If any `output -raw` fails, run the **apply -refresh-only** step under *Build and Push Backend Image to ECR* first.
+
+```bash
+export TF_DIR="infrastructure/environments/dev"
+export REGION=$(terraform -chdir="$TF_DIR" output -raw aws_region)
+export CLUSTER=$(terraform -chdir="$TF_DIR" output -raw ecs_cluster_name)
+export SERVICE=$(terraform -chdir="$TF_DIR" output -raw ecs_service_name)
+export TASK_FAMILY=$(terraform -chdir="$TF_DIR" output -raw ecs_task_definition_family)
+export SUBNETS=$(terraform -chdir="$TF_DIR" output -raw ecs_private_app_subnet_ids_csv)
+export ECS_SG=$(terraform -chdir="$TF_DIR" output -raw ecs_tasks_security_group_id)
+export ASSIGN_PUBLIC=$(terraform -chdir="$TF_DIR" output -raw ecs_fargate_assign_public_ip)
+```
 
 2) Start the task and wait until it stops:
 
