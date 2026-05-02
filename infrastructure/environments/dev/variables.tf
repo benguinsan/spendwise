@@ -23,14 +23,32 @@ variable "enable_nat_gateway" {
 variable "create_rds" {
   type        = bool
   default     = false
-  description = "true = tạo RDS (có phí). Cần db_password trong tfvars."
+  description = "true = tạo RDS (có phí). Mật khẩu lấy từ Secrets Manager (module db_password_secret); để db_password rỗng để tự sinh."
 }
 
 variable "db_password" {
   type        = string
   sensitive   = true
   default     = ""
-  description = "Mật khẩu master RDS khi create_rds = true"
+  description = "Khi create_rds=true: nếu rỗng Terraform tự sinh mật khẩu và lưu vào Secrets Manager; nếu có giá trị thì dùng giá trị đó (vẫn được ghi vào SM). Không commit mật khẩu thật vào git."
+}
+
+variable "db_password_secret_recovery_window_days" {
+  type        = number
+  default     = 0
+  description = "Secrets Manager recovery window cho secret db password. 0 = xóa ngay (dev). Prod nên 7–30."
+}
+
+variable "enable_waf" {
+  type        = bool
+  default     = false
+  description = "Bật WAFv2 regional gắn ALB (có phí dịch vụ WAF). Tắt mặc định để tiết kiệm dev."
+}
+
+variable "waf_enable_cloudwatch_metrics" {
+  type        = bool
+  default     = false
+  description = "Bật metric CloudWatch cho WAF (thêm chi phí nhẹ). Giữ false khi không cần."
 }
 
 variable "db_username" {
@@ -54,6 +72,24 @@ variable "app_container_port" {
 variable "alb_health_check_path" {
   type    = string
   default = "/"
+}
+
+variable "alb_acm_certificate_arn" {
+  type        = string
+  default     = ""
+  description = "ACM certificate ARN in the same region as the ALB for HTTPS. Issue/validate ACM at your DNS provider (e.g. PointHQ); no Route53 required for ALB."
+}
+
+variable "enable_amplify_hosted_zone" {
+  type        = bool
+  default     = false
+  description = "Create a public Route53 hosted zone for Amplify custom-domain DNS (CNAME/verification). Not used by the ALB."
+}
+
+variable "amplify_hosted_zone_name" {
+  type        = string
+  default     = ""
+  description = "FQDN for the new hosted zone when enable_amplify_hosted_zone=true (e.g. app.dev.example.com). Delegate NS from the parent zone to output amplify_route53_name_servers."
 }
 
 variable "ecs_backend_image_tag" {

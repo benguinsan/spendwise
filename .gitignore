@@ -38,3 +38,6 @@ package-lock.json
 # Terraform local build artifacts (used e.g. for lambda zips)
 /.tmp/
 **/.tmp/
+
+# Infrastructure docs (local / optional; not tracked in repo)
+/infrastructure/docs/

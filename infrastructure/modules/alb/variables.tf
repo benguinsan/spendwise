@@ -33,3 +33,9 @@ variable "acm_certificate_arn" {
   default     = ""
   description = "ACM certificate ARN for HTTPS listener on ALB. Leave empty to keep HTTP-only."
 }
+
+variable "enable_https_listener" {
+  type        = bool
+  default     = false
+  description = "Create HTTPS listener (443). Set from known inputs (e.g. custom domain flag); do not infer solely from acm_certificate_arn when that value is only known after apply."
+}
