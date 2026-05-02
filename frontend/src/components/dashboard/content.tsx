@@ -30,14 +30,14 @@ export function DashboardContent() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (authLoading) return;
+    if (authLoading || !user?.id) return;
 
     const loadDashboardData = async () => {
       try {
         setLoading(true);
         const [walletsData, transactionsData] = await Promise.all([
-          api.wallets.getAll().catch(() => []),
-          api.transactions.getAll().catch(() => []),
+          api.wallets.getByUser(user.id).catch(() => []),
+          api.transactions.getByUser(user.id).catch(() => []),
         ]);
 
         setWallets(Array.isArray(walletsData) ? walletsData : []);
@@ -55,7 +55,7 @@ export function DashboardContent() {
     };
 
     loadDashboardData();
-  }, [authLoading, addToast]);
+  }, [authLoading, user?.id, addToast]);
 
   const totalBalance = wallets.reduce(
     (sum, wallet) => sum + (wallet.balance || 0),

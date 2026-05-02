@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { api } from "@/lib/api";
+import { useAuth } from "@/contexts/auth";
 import { useToast } from "@/contexts/toast";
 
 interface Transaction {
@@ -19,6 +20,7 @@ interface Wallet {
 }
 
 export default function TransactionsPage() {
+  const { user } = useAuth();
   const { addToast } = useToast();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [wallets, setWallets] = useState<Wallet[]>([]);
@@ -34,12 +36,14 @@ export default function TransactionsPage() {
   });
 
   useEffect(() => {
+    if (!user?.id) return;
+
     const loadData = async () => {
       try {
         setLoading(true);
         const [transactionsData, walletsData] = await Promise.all([
-          api.transactions.getAll(),
-          api.wallets.getAll(),
+          api.transactions.getByUser(user.id),
+          api.wallets.getByUser(user.id),
         ]);
         setTransactions(
           Array.isArray(transactionsData) ? transactionsData : [],
@@ -59,16 +63,17 @@ export default function TransactionsPage() {
     };
 
     loadData();
-  }, [addToast]);
+  }, [user?.id, addToast]);
 
   const handleCreateTransaction = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user?.id) return;
     try {
       const transactionData: Record<string, unknown> = {
         amount: parseFloat(formData.amount),
         note: formData.note,
         date: formData.date,
-        walletId: formData.walletId,
+        userId: user.id,
       };
 
       let transaction;
@@ -76,16 +81,19 @@ export default function TransactionsPage() {
         transaction = await api.transactions.create({
           ...transactionData,
           type: "income",
+          walletId: formData.walletId,
         });
       } else if (formData.type === "expense") {
         transaction = await api.transactions.create({
           ...transactionData,
           type: "expense",
+          walletId: formData.walletId,
         });
       } else {
         transaction = await api.transactions.create({
           ...transactionData,
           type: "transfer",
+          fromWalletId: formData.walletId,
         });
       }
 

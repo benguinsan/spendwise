@@ -6,23 +6,38 @@ import {
   InternalServerErrorException,
   BadGatewayException,
 } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { ConfirmSignupDto } from './dto/confirm-signup.dto';
 import { PrismaService } from '../prisma/service/prisma.service';
+import * as bcryptjs from 'bcryptjs';
 
 @Injectable()
 export class AuthService {
   private logger = new Logger('AuthService');
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly jwtService: JwtService,
+  ) {}
 
   async register(registerDto: RegisterDto) {
-    return this.registerWithCognito(registerDto);
+    // Check if Cognito is configured
+    if (this.isCognitoConfigured()) {
+      return this.registerWithCognito(registerDto);
+    }
+    // Fallback to local JWT authentication
+    return this.registerWithJWT(registerDto);
   }
 
   async login(loginDto: LoginDto) {
-    return this.loginWithCognito(loginDto);
+    // Check if Cognito is configured
+    if (this.isCognitoConfigured()) {
+      return this.loginWithCognito(loginDto);
+    }
+    // Fallback to local JWT authentication
+    return this.loginWithJWT(loginDto);
   }
 
   async confirmSignup(confirmSignupDto: ConfirmSignupDto) {
@@ -274,5 +289,105 @@ export class AuthService {
     await this.prisma.user.create({
       data: data as any,
     });
+  }
+
+  private isCognitoConfigured(): boolean {
+    const region = process.env.COGNITO_REGION || process.env.AWS_REGION;
+    const clientId = process.env.COGNITO_CLIENT_ID;
+    return !!(region && clientId);
+  }
+
+  // Local JWT authentication fallback when Cognito is not configured
+  private async registerWithJWT(registerDto: RegisterDto) {
+    const { email, password, name } = registerDto;
+
+    // Check if user already exists
+    const existingUser = await this.prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (existingUser) {
+      throw new ConflictException('User with this email already exists');
+    }
+
+    // Hash password
+    const hashedPassword = await bcryptjs.hash(password, 10);
+
+    // Create user
+    const user = await this.prisma.user.create({
+      data: {
+        email,
+        name: name || null,
+        password: hashedPassword,
+      },
+    });
+
+    // Generate JWT token
+    const idToken = this.jwtService.sign(
+      {
+        sub: user.id,
+        email: user.email,
+        name: user.name,
+      },
+      {
+        expiresIn: '24h',
+      },
+    );
+
+    return {
+      provider: 'local',
+      idToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+      },
+      userConfirmed: true,
+      expiresIn: 86400,
+      message: 'Signup successful',
+    };
+  }
+
+  private async loginWithJWT(loginDto: LoginDto) {
+    const { email, password } = loginDto;
+
+    // Find user
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (!user || !user.password) {
+      throw new UnauthorizedException('Invalid email or password');
+    }
+
+    // Verify password
+    const isPasswordValid = await bcryptjs.compare(password, user.password);
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Invalid email or password');
+    }
+
+    // Generate JWT token
+    const idToken = this.jwtService.sign(
+      {
+        sub: user.id,
+        email: user.email,
+        name: user.name,
+      },
+      {
+        expiresIn: '24h',
+      },
+    );
+
+    return {
+      provider: 'local',
+      idToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+      },
+      userConfirmed: true,
+      expiresIn: 86400,
+    };
   }
 }

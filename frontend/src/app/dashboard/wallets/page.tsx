@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
+import { useAuth } from "@/contexts/auth";
 import { useToast } from "@/contexts/toast";
 
 interface Wallet {
@@ -13,10 +14,12 @@ interface Wallet {
 }
 
 export default function WalletsPage() {
+  const { user } = useAuth();
   const { addToast } = useToast();
   const [wallets, setWallets] = useState<Wallet[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [editingWallet, setEditingWallet] = useState<Wallet | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     currency: "USD",
@@ -24,10 +27,12 @@ export default function WalletsPage() {
   });
 
   useEffect(() => {
+    if (!user?.id) return;
+
     const loadWallets = async () => {
       try {
         setLoading(true);
-        const data = await api.wallets.getAll();
+        const data = await api.wallets.getByUser(user.id);
         setWallets(Array.isArray(data) ? data : []);
       } catch (error) {
         addToast(
@@ -40,15 +45,17 @@ export default function WalletsPage() {
     };
 
     loadWallets();
-  }, [addToast]);
+  }, [user?.id, addToast]);
 
   const handleCreateWallet = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user?.id) return;
     try {
       const wallet = await api.wallets.create({
         name: formData.name,
         balance: parseFloat(formData.initialBalance) || 0,
         currency: formData.currency,
+        userId: user.id,
       });
       setWallets([...wallets, wallet as Wallet]);
       setFormData({ name: "", currency: "USD", initialBalance: "" });
@@ -60,6 +67,45 @@ export default function WalletsPage() {
         "error",
       );
     }
+  };
+
+  const handleUpdateWallet = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingWallet) return;
+    try {
+      const updated = await api.wallets.update(editingWallet.id, {
+        name: formData.name,
+        currency: formData.currency,
+      });
+      setWallets(
+        wallets.map((w) =>
+          w.id === editingWallet.id ? (updated as Wallet) : w,
+        ),
+      );
+      setFormData({ name: "", currency: "USD", initialBalance: "" });
+      setEditingWallet(null);
+      addToast("Wallet updated successfully!", "success");
+    } catch (error) {
+      addToast(
+        `Failed to update wallet: ${error instanceof Error ? error.message : "Unknown error"}`,
+        "error",
+      );
+    }
+  };
+
+  const startEdit = (wallet: Wallet) => {
+    setEditingWallet(wallet);
+    setFormData({
+      name: wallet.name,
+      currency: wallet.currency || "USD",
+      initialBalance: wallet.balance.toString(),
+    });
+    setShowForm(false);
+  };
+
+  const cancelEdit = () => {
+    setEditingWallet(null);
+    setFormData({ name: "", currency: "USD", initialBalance: "" });
   };
 
   const handleDeleteWallet = async (id: string) => {
@@ -95,7 +141,11 @@ export default function WalletsPage() {
           </p>
         </div>
         <button
-          onClick={() => setShowForm(!showForm)}
+          onClick={() => {
+            setShowForm(!showForm);
+            setEditingWallet(null);
+            setFormData({ name: "", currency: "USD", initialBalance: "" });
+          }}
           className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 font-medium"
         >
           {showForm ? "Cancel" : "Add Wallet"}
@@ -159,6 +209,59 @@ export default function WalletsPage() {
         </form>
       )}
 
+      {editingWallet && (
+        <form
+          onSubmit={handleUpdateWallet}
+          className="bg-card border border-primary rounded-lg p-6 space-y-4"
+        >
+          <div className="flex justify-between items-center mb-2">
+            <h3 className="font-semibold">Edit Wallet</h3>
+            <button
+              type="button"
+              onClick={cancelEdit}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              ✕
+            </button>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">
+              Wallet Name
+            </label>
+            <input
+              type="text"
+              required
+              value={formData.name}
+              onChange={(e) =>
+                setFormData({ ...formData, name: e.target.value })
+              }
+              className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">Currency</label>
+            <input
+              type="text"
+              value={formData.currency}
+              onChange={(e) =>
+                setFormData({ ...formData, currency: e.target.value })
+              }
+              className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Note: Balance cannot be edited directly. Use transactions to update
+            balance.
+          </p>
+          <button
+            type="submit"
+            className="w-full px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 font-medium"
+          >
+            Update Wallet
+          </button>
+        </form>
+      )}
+
       {wallets.length === 0 ? (
         <div className="rounded-lg border border-dashed border-border p-12 text-center">
           <p className="text-muted-foreground mb-4">
@@ -183,15 +286,28 @@ export default function WalletsPage() {
                 <h3 className="font-semibold text-lg group-hover:text-primary transition-colors">
                   {wallet.name}
                 </h3>
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    handleDeleteWallet(wallet.id);
-                  }}
-                  className="text-muted-foreground hover:text-red-600 transition-colors"
-                >
-                  ✕
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      startEdit(wallet);
+                    }}
+                    className="text-muted-foreground hover:text-primary transition-colors"
+                    title="Edit"
+                  >
+                    ✏️
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleDeleteWallet(wallet.id);
+                    }}
+                    className="text-muted-foreground hover:text-red-600 transition-colors"
+                    title="Delete"
+                  >
+                    ✕
+                  </button>
+                </div>
               </div>
               <p className="text-3xl font-bold">${wallet.balance.toFixed(2)}</p>
               <p className="text-sm text-muted-foreground mt-2">
