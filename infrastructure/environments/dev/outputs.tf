@@ -3,6 +3,11 @@ output "alb_dns_name" {
   value       = module.alb.alb_dns_name
 }
 
+output "aws_region" {
+  value       = var.aws_region
+  description = "Deployment region (AWS CLI --region, same as ECR)."
+}
+
 output "ecr_repository_url" {
   value = module.ecr.repository_url
 }
