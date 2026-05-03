@@ -4,6 +4,7 @@ environment          = "dev"
 enable_nat_gateway   = true
 create_rds           = false
 # Khi create_rds = true: để db_password = "" để tự sinh và lưu Secrets Manager (1 secret, 1 version).
+# rds_multi_az = false  # default dev cost; true cho standby ở AZ khác
 # Hoặc set db_password tạm thời (gitignore tfvars) — vẫn được mirror vào SM.
 # db_password_secret_recovery_window_days = 0
 # enable_waf                             = false
@@ -11,12 +12,12 @@ create_rds           = false
 
 app_container_port      = 3000
 alb_health_check_path   = "/"
-# ALB HTTPS: ACM in same region as ALB; validate DNS at your registrar (no Route53 required for API/ALB).
+# ALB HTTPS: ACM in same region as ALB; validate DNS at your registrar.
 alb_acm_certificate_arn = "arn:aws:acm:<region>:<account-id>:certificate/<certificate-id>"
-
-# Optional: public hosted zone only for Amplify custom domain (add CNAMEs from Amplify console).
-# enable_amplify_hosted_zone  = true
-# amplify_hosted_zone_name   = "app.dev.example.com"
+# Or skip ACM and use CloudFront default HTTPS in front of ALB (fixes Amplify mixed content):
+# enable_api_cloudfront = true
+# Must match cert CN/SAN; CNAME this host to the ALB DNS name (Terraform output alb_dns_name).
+# alb_public_api_base_url = "https://api.dev.example.com"
 
 # Bastion for SSM port forwarding (optional)
 create_bastion              = false

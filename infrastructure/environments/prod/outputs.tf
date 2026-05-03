@@ -17,6 +17,16 @@ output "alb_dns_name" {
   value = module.alb.alb_dns_name
 }
 
+output "api_cloudfront_domain_name" {
+  description = "CloudFront default domain when enable_api_cloudfront=true."
+  value       = length(module.cloudfront_api) > 0 ? module.cloudfront_api[0].distribution_domain_name : null
+}
+
+output "api_cloudfront_url" {
+  description = "HTTPS API URL when enable_api_cloudfront=true."
+  value       = length(module.cloudfront_api) > 0 ? module.cloudfront_api[0].api_base_url : null
+}
+
 output "ecr_repository_url" {
   value = module.ecr.repository_url
 }

@@ -3,8 +3,11 @@ data "aws_availability_zones" "available" {
 }
 
 locals {
-  azs              = slice(data.aws_availability_zones.available.names, 0, 2)
-  frontend_api_url = var.alb_acm_certificate_arn != "" ? "https://${module.alb.alb_dns_name}" : "http://${module.alb.alb_dns_name}"
+  azs = slice(data.aws_availability_zones.available.names, 0, 2)
+  frontend_api_url_alb_only = trimspace(var.alb_acm_certificate_arn) != "" ? (
+    trimspace(var.alb_public_api_base_url) != "" ? trimsuffix(trimspace(var.alb_public_api_base_url), "/") : "https://${module.alb.alb_dns_name}"
+  ) : "http://${module.alb.alb_dns_name}"
+  frontend_api_url = var.enable_api_cloudfront ? trimsuffix(module.cloudfront_api[0].api_base_url, "/") : local.frontend_api_url_alb_only
   ecs_alb_request_count_resource_label = format(
     "%s/targetgroup/%s",
     regex(":loadbalancer/(.+)$", module.alb.alb_arn)[0],
@@ -102,6 +105,16 @@ module "alb" {
   acm_certificate_arn   = var.alb_acm_certificate_arn
 }
 
+module "cloudfront_api" {
+  count  = var.enable_api_cloudfront ? 1 : 0
+  source = "../../modules/cloudfront_alb"
+
+  project_name           = var.project_name
+  environment            = var.environment
+  alb_dns_name           = module.alb.alb_dns_name
+  alb_origin_use_https   = trimspace(var.alb_acm_certificate_arn) != ""
+}
+
 module "ecs" {
   source = "../../modules/ecs"
 
@@ -116,7 +129,10 @@ module "ecs" {
   container_image                  = "${module.ecr.repository_url}:${var.ecs_backend_image_tag}"
   container_port                   = var.app_container_port
   cloudwatch_log_group_name        = module.monitoring.ecs_log_group_name
-  container_environment            = var.ecs_backend_environment
+  container_environment = concat(
+    var.ecs_backend_environment,
+    [{ name = "CORS_ORIGIN", value = "https://${var.amplify_branch_name}.${module.amplify.default_domain}" }]
+  )
   desired_count                    = var.ecs_desired_count
   task_cpu                         = var.ecs_task_cpu
   task_memory                      = var.ecs_task_memory
@@ -136,5 +152,5 @@ module "rds" {
   private_data_subnet_ids = module.vpc.private_data_subnet_ids
   rds_security_group_id   = module.security_groups.rds_security_group_id
   db_password             = var.db_password
-  multi_az                = true
+  multi_az                = var.rds_multi_az
 }

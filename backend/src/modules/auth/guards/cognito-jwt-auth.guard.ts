@@ -19,13 +19,12 @@ type CognitoClaims = {
 
 @Injectable()
 export class CognitoJwtAuthGuard implements CanActivate {
-  private verifier: ReturnType<typeof CognitoJwtVerifier.create> | null = null;
+  private accessVerifier: ReturnType<typeof CognitoJwtVerifier.create> | null =
+    null;
+  private idVerifier: ReturnType<typeof CognitoJwtVerifier.create> | null =
+    null;
 
-  private getVerifier() {
-    if (this.verifier) {
-      return this.verifier;
-    }
-
+  private getVerifiers() {
     const userPoolId = process.env.COGNITO_USER_POOL_ID;
     const clientId = process.env.COGNITO_CLIENT_ID;
     const region = process.env.COGNITO_REGION || process.env.AWS_REGION;
@@ -36,13 +35,22 @@ export class CognitoJwtAuthGuard implements CanActivate {
       );
     }
 
-    this.verifier = CognitoJwtVerifier.create({
-      userPoolId,
-      tokenUse: 'access',
-      clientId,
-    });
+    if (!this.accessVerifier) {
+      this.accessVerifier = CognitoJwtVerifier.create({
+        userPoolId,
+        tokenUse: 'access',
+        clientId,
+      });
+    }
+    if (!this.idVerifier) {
+      this.idVerifier = CognitoJwtVerifier.create({
+        userPoolId,
+        tokenUse: 'id',
+        clientId,
+      });
+    }
 
-    return this.verifier;
+    return { accessVerifier: this.accessVerifier, idVerifier: this.idVerifier };
   }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -60,20 +68,30 @@ export class CognitoJwtAuthGuard implements CanActivate {
       throw new UnauthorizedException('Empty Bearer token');
     }
 
+    const { accessVerifier, idVerifier } = this.getVerifiers();
+
+    let payload: CognitoClaims;
     try {
-      const payload = (await this.getVerifier().verify(token)) as CognitoClaims;
-      req.user = {
-        provider: 'cognito',
-        sub: payload.sub,
-        email: payload.email ?? null,
-        username: payload.username ?? null,
-        scope: payload.scope ?? null,
-        tokenUse: payload.token_use,
-        claims: payload,
-      };
-      return true;
+      payload = (await accessVerifier.verify(token)) as CognitoClaims;
     } catch {
-      throw new UnauthorizedException('Invalid Cognito access token');
+      try {
+        payload = (await idVerifier.verify(token)) as CognitoClaims;
+      } catch {
+        throw new UnauthorizedException(
+          'Invalid Cognito token (expected access or id token)',
+        );
+      }
     }
+
+    req.user = {
+      provider: 'cognito',
+      sub: payload.sub,
+      email: payload.email ?? null,
+      username: payload.username ?? null,
+      scope: payload.scope ?? null,
+      tokenUse: payload.token_use,
+      claims: payload,
+    };
+    return true;
   }
 }

@@ -9,9 +9,12 @@ locals {
 
   # Build DATABASE_URL for the Cognito PostConfirmation Lambda.
   cognito_post_confirmation_database_url = var.create_rds && module.rds.db_instance_endpoint != null ? "postgresql://${var.db_username}:${local.db_password_effective}@${module.rds.db_instance_endpoint}/${var.db_name}?sslmode=no-verify&schema=public" : null
-  # Next.js frontend needs backend base URL for calls to /auth, /users, /wallets, ...
-  # ALB TLS: set alb_acm_certificate_arn (ACM in same region as ALB; validate DNS at your registrar).
-  frontend_api_url = trimspace(var.alb_acm_certificate_arn) != "" ? "https://${module.alb.alb_dns_name}" : "http://${module.alb.alb_dns_name}"
+  # Next.js frontend: NEXT_PUBLIC_API_URL (split so module.cloudfront_api[0] is not referenced when count = 0).
+  frontend_api_url_alb_only = trimspace(var.alb_acm_certificate_arn) != "" ? (
+    trimspace(var.alb_public_api_base_url) != "" ? trimsuffix(trimspace(var.alb_public_api_base_url), "/") : "https://${module.alb.alb_dns_name}"
+  ) : "http://${module.alb.alb_dns_name}"
+  # CloudFront default cert → https://dxxx.cloudfront.net (no custom domain / ACM required for browser).
+  frontend_api_url = var.enable_api_cloudfront ? trimsuffix(module.cloudfront_api[0].api_base_url, "/") : local.frontend_api_url_alb_only
   # Application Auto Scaling — ALBRequestCountPerTarget (suffix sau loadbalancer/ + targetgroup/...)
   ecs_alb_request_count_resource_label = format(
     "%s/targetgroup/%s",
@@ -31,7 +34,9 @@ locals {
       { name = "COGNITO_REGION", value = var.aws_region },
       { name = "COGNITO_USER_POOL_ID", value = module.cognito.user_pool_id },
       { name = "COGNITO_CLIENT_ID", value = module.cognito.user_pool_client_id },
-    ]
+    ],
+    # Browser Origin is Amplify HTTPS — Nest CORS must allow it when the SPA calls the API (ALB or CloudFront).
+    [{ name = "CORS_ORIGIN", value = "https://${var.amplify_branch_name}.${module.amplify.default_domain}" }]
   )
 }
 
@@ -150,24 +155,14 @@ module "alb" {
   acm_certificate_arn   = var.alb_acm_certificate_arn
 }
 
-# Optional public hosted zone for Amplify custom domain (CNAME/verification records).
-# Delegate NS from the parent zone to amplify_route53_name_servers when creating a child zone.
-resource "aws_route53_zone" "amplify" {
-  count = var.enable_amplify_hosted_zone ? 1 : 0
-  name  = var.amplify_hosted_zone_name
+module "cloudfront_api" {
+  count  = var.enable_api_cloudfront ? 1 : 0
+  source = "../../modules/cloudfront_alb"
 
-  lifecycle {
-    precondition {
-      condition     = trimspace(var.amplify_hosted_zone_name) != ""
-      error_message = "When enable_amplify_hosted_zone is true, set amplify_hosted_zone_name (e.g. app.dev.example.com)."
-    }
-  }
-
-  tags = {
-    Name        = "${var.project_name}-${var.environment}-amplify-dns"
-    Purpose     = "amplify-custom-domain"
-    Environment = var.environment
-  }
+  project_name           = var.project_name
+  environment            = var.environment
+  alb_dns_name           = module.alb.alb_dns_name
+  alb_origin_use_https   = trimspace(var.alb_acm_certificate_arn) != ""
 }
 
 module "waf_alb" {
@@ -218,6 +213,7 @@ module "rds" {
   db_name                 = var.db_name
   db_username             = var.db_username
   db_password             = local.db_password_effective
+  multi_az                = var.rds_multi_az
 }
 
 module "bastion" {

@@ -8,6 +8,7 @@ import { JWT_SECRET, JWT_EXPIRY } from './constants/jwt.constants';
 import { PrismaService } from '../prisma/service/prisma.service';
 import { CognitoJwtAuthGuard } from './guards/cognito-jwt-auth.guard';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { MeAuthGuard } from './guards/me-auth.guard';
 
 @Module({
   imports: [
@@ -20,9 +21,10 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard';
   controllers: [AuthController],
   providers: [
     AuthService,
-    JwtStrategy,
+    JwtStrategy, // JWT nội bộ — vẫn dùng khi không cấu hình Cognito (MeAuthGuard → JwtAuthGuard).
     CognitoJwtAuthGuard,
     JwtAuthGuard,
+    MeAuthGuard,
     PrismaService,
   ],
   exports: [AuthService, JwtModule, PassportModule],

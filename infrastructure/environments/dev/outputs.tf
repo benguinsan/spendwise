@@ -3,13 +3,29 @@ output "alb_dns_name" {
   value       = module.alb.alb_dns_name
 }
 
+output "api_cloudfront_domain_name" {
+  description = "Default CloudFront domain (dxxx.cloudfront.net) when enable_api_cloudfront=true; null otherwise."
+  value       = length(module.cloudfront_api) > 0 ? module.cloudfront_api[0].distribution_domain_name : null
+}
+
+output "api_cloudfront_url" {
+  description = "HTTPS URL used by Amplify NEXT_PUBLIC_API_URL when enable_api_cloudfront=true."
+  value       = length(module.cloudfront_api) > 0 ? module.cloudfront_api[0].api_base_url : null
+}
+
 output "aws_region" {
   value       = var.aws_region
   description = "Deployment region (AWS CLI --region, same as ECR)."
 }
 
 output "ecr_repository_url" {
-  value = module.ecr.repository_url
+  description = "ECR repository URL without image tag; combine with ecs_backend_image_tag for docker tag/push."
+  value       = module.ecr.repository_url
+}
+
+output "ecs_backend_image_tag" {
+  description = "Tag from terraform.tfvars used by the ECS task definition; docker push must publish this same tag."
+  value       = var.ecs_backend_image_tag
 }
 
 output "cognito_user_pool_id" {
@@ -36,7 +52,8 @@ output "amplify_branch_name" {
 }
 
 output "ecs_cluster_name" {
-  value = module.ecs.cluster_name
+  description = "ECS cluster hosting the backend Fargate service."
+  value       = module.ecs.cluster_name
 }
 
 output "ecs_service_name" {
@@ -76,16 +93,6 @@ output "rds_endpoint" {
 output "bastion_instance_id" {
   value       = var.create_bastion ? module.bastion[0].instance_id : null
   description = "EC2 instance id for SSM port forwarding (null nếu create_bastion = false)"
-}
-
-output "amplify_route53_zone_id" {
-  value       = var.enable_amplify_hosted_zone ? aws_route53_zone.amplify[0].zone_id : null
-  description = "Hosted zone ID for Amplify DNS when enable_amplify_hosted_zone=true."
-}
-
-output "amplify_route53_name_servers" {
-  value       = var.enable_amplify_hosted_zone ? sort(aws_route53_zone.amplify[0].name_servers) : []
-  description = "Delegate these NS from the parent DNS provider to use this zone for Amplify custom domain records."
 }
 
 output "db_password_secret_arn" {
