@@ -1,4 +1,13 @@
-import { IsString, IsOptional, IsEnum } from 'class-validator';
+import { Transform } from 'class-transformer';
+import { IsString, IsOptional, IsIn } from 'class-validator';
+
+function normalizeCategoryType({ value }: { value: unknown }): unknown {
+  if (value === undefined || value === null) return undefined;
+  if (typeof value !== 'string') return value;
+  const t = value.trim();
+  if (t === '') return undefined;
+  return t.toUpperCase();
+}
 
 export class UpdateCategoryDto {
   @IsOptional()
@@ -10,6 +19,7 @@ export class UpdateCategoryDto {
   icon?: string;
 
   @IsOptional()
-  @IsEnum(['INCOME', 'EXPENSE'])
+  @Transform(normalizeCategoryType)
+  @IsIn(['INCOME', 'EXPENSE'])
   type?: string;
 }

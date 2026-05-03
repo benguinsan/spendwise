@@ -44,8 +44,8 @@ Expose backend via TLS endpoint, then set:
 2. Add ALB HTTPS listener on port 443.
 3. Attach certificate to listener.
 4. Forward HTTPS listener to existing target group (ECS service).
-5. Add Route53 record:
-   - `api.<your-domain>` -> ALB
+5. Add a DNS record at your provider:
+   - `api.<your-domain>` -> ALB (CNAME or alias as your DNS supports)
 6. Keep security group allowing inbound 443 on ALB.
 7. (Optional) redirect 80 -> 443.
 

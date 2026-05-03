@@ -21,9 +21,12 @@ fi
 echo "✅ PostgreSQL is ready!"
 
 # Run migrations
+# TEMPORARY (ECS diagnosis): if tasks become healthy with this off, investigate
+# migrate deploy (DB user grants, _prisma_migrations, drift, timeout).
 echo "🔄 Running database migrations..."
-npx prisma migrate deploy
-echo "✅ Migrations completed!"
+# npx prisma migrate deploy
+# echo "✅ Migrations completed!"
+echo "⚠️ prisma migrate deploy skipped (temporary); restore the two commented lines above when done."
 
 # Start the application
 echo "🚀 Starting NestJS application..."

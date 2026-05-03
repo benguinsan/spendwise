@@ -25,8 +25,8 @@ variable "branch_name" {
 
 variable "framework" {
   type        = string
-  default     = "Next.js"
-  description = "Amplify framework metadata"
+  default     = "Next.js - SSR"
+  description = "Amplify branch framework; use Next.js - SSR for App Router / SSR on WEB_COMPUTE (Amplify rejects plain Next.js for SSR deploys)."
 }
 
 variable "branch_stage" {

@@ -32,16 +32,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Load user on mount if authenticated
+  /** GET /auth/me — Cognito login không trả `user` trong body, cần gọi sau khi có token. */
+  const hydrateUserFromSession = useCallback(async (): Promise<User | null> => {
+    if (!userService.isAuthenticated()) {
+      return null;
+    }
+    const profile = await userService.getProfile();
+    if (profile) {
+      setUser(profile);
+      return profile;
+    }
+    return null;
+  }, []);
+
+  // Load user on mount if authenticated (full page load / reload).
   useEffect(() => {
     async function loadUser() {
       if (userService.isAuthenticated()) {
         setIsLoading(true);
         try {
-          const profile = await userService.getProfile();
-          if (profile) {
-            setUser(profile);
-          } else {
+          const profile = await hydrateUserFromSession();
+          if (!profile) {
             userService.logout();
           }
         } finally {
@@ -49,25 +60,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
     }
-    loadUser();
-  }, []);
+    void loadUser();
+  }, [hydrateUserFromSession]);
 
-  const login = useCallback(async (email: string, password: string) => {
-    setError(null);
-    setIsLoading(true);
-    try {
-      const response = await userService.login(email, password);
-      if (response.user) {
-        setUser(response.user);
+  const login = useCallback(
+    async (email: string, password: string) => {
+      setError(null);
+      setIsLoading(true);
+      try {
+        const response = await userService.login(email, password);
+        if (response.user) {
+          setUser(response.user);
+        } else {
+          await hydrateUserFromSession();
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Login failed";
+        setError(message);
+        throw err;
+      } finally {
+        setIsLoading(false);
       }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Login failed";
-      setError(message);
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+    },
+    [hydrateUserFromSession],
+  );
 
   const register = useCallback(
     async (email: string, password: string, name?: string) => {
@@ -77,6 +93,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const response = await userService.register(email, password, name);
         if (response.user) {
           setUser(response.user);
+        } else if (userService.isAuthenticated()) {
+          await hydrateUserFromSession();
         }
         return response;
       } catch (err) {
@@ -88,7 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setIsLoading(false);
       }
     },
-    [],
+    [hydrateUserFromSession],
   );
 
   const confirmSignup = useCallback(
@@ -97,6 +115,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(true);
       try {
         await userService.confirmSignup(email, confirmationCode);
+        if (userService.isAuthenticated()) {
+          await hydrateUserFromSession();
+        }
       } catch (err) {
         const message =
           err instanceof Error ? err.message : "Confirmation failed";
@@ -106,7 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setIsLoading(false);
       }
     },
-    [],
+    [hydrateUserFromSession],
   );
 
   const logout = useCallback(() => {

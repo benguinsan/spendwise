@@ -40,6 +40,58 @@ export class AuthService {
     // return this.loginWithJWT(loginDto);
   }
 
+  /**
+   * GET /auth/me: sau MeAuthGuard — Cognito payload hoặc JWT nội bộ (JwtStrategy.validate → { userId, email }).
+   * JWT nội bộ không xóa; khi không có Cognito, MeAuthGuard vẫn gọi JwtAuthGuard.
+   */
+  async getMe(req: { user?: unknown }) {
+    const user = req.user;
+    if (!user || typeof user !== 'object') {
+      throw new UnauthorizedException();
+    }
+
+    const u = user as Record<string, unknown>;
+
+    if (u['provider'] === 'cognito') {
+      const sub = typeof u['sub'] === 'string' ? u['sub'] : '';
+      const email = typeof u['email'] === 'string' ? u['email'] : null;
+      const claims =
+        u['claims'] && typeof u['claims'] === 'object'
+          ? (u['claims'] as Record<string, unknown>)
+          : {};
+
+      const dbUser = await this.prisma.user.findFirst({
+        where: {
+          OR: [{ cognitoSub: sub }, ...(email ? [{ email }] : [])],
+        },
+      });
+
+      const claimsName = claims['name'];
+      const nameFromClaims =
+        typeof claimsName === 'string' ? claimsName : undefined;
+
+      return {
+        id: dbUser?.id ?? sub,
+        email: dbUser?.email ?? email ?? '',
+        name: dbUser?.name ?? nameFromClaims ?? null,
+      };
+    }
+
+    // Nhánh JWT nội bộ (Passport jwt strategy) — giữ đồng bộ với JwtStrategy.validate.
+    if (typeof u['userId'] === 'string') {
+      const dbUser = await this.prisma.user.findUnique({
+        where: { id: u['userId'] },
+      });
+      return {
+        id: u['userId'],
+        email: dbUser?.email ?? (typeof u['email'] === 'string' ? u['email'] : ''),
+        name: dbUser?.name ?? null,
+      };
+    }
+
+    throw new UnauthorizedException();
+  }
+
   async confirmSignup(confirmSignupDto: ConfirmSignupDto) {
     const { email, confirmationCode } = confirmSignupDto;
     const { clientId } = this.getCognitoConfig();

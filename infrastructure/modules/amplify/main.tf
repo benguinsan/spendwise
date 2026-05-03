@@ -15,7 +15,7 @@ resource "aws_amplify_app" "this" {
   name                        = "${local.name}-frontend"
   repository                  = var.repository_url
   access_token                = var.access_token
-  platform                    = "WEB"
+  platform                    = "WEB_COMPUTE"
   enable_branch_auto_deletion = false
 
   build_spec = var.build_spec

@@ -35,8 +35,8 @@ resource "aws_db_instance" "this" {
   password               = var.db_password
   db_subnet_group_name   = aws_db_subnet_group.this[0].name
   vpc_security_group_ids = [var.rds_security_group_id]
-  # Cost-optimized defaults for non-production workloads.
-  multi_az                   = false
+  # multi_az: standby in another AZ (roughly 2× instance cost). Set via var.multi_az.
+  multi_az                   = var.multi_az
   skip_final_snapshot        = true
   publicly_accessible        = false
   backup_retention_period    = 0

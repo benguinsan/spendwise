@@ -28,6 +28,12 @@ variable "db_password" {
   default   = ""
 }
 
+variable "rds_multi_az" {
+  type        = bool
+  default     = true
+  description = "RDS Multi-AZ standby (recommended for prod; ~2× instance cost)."
+}
+
 variable "app_container_port" {
   type    = number
   default = 3000
@@ -42,6 +48,18 @@ variable "alb_acm_certificate_arn" {
   type        = string
   default     = ""
   description = "ACM certificate ARN for ALB HTTPS listener. Required for HTTPS backend endpoint."
+}
+
+variable "alb_public_api_base_url" {
+  type        = string
+  default     = ""
+  description = "When HTTPS is enabled: NEXT_PUBLIC_API_URL base (must match ACM), e.g. https://api.example.com — no trailing slash; DNS CNAME to ALB."
+}
+
+variable "enable_api_cloudfront" {
+  type        = bool
+  default     = false
+  description = "CloudFront default HTTPS URL in front of ALB for Amplify NEXT_PUBLIC_API_URL (no custom domain)."
 }
 
 variable "ecs_backend_image_tag" {

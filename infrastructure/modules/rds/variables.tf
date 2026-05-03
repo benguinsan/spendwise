@@ -48,6 +48,7 @@ variable "allocated_storage" {
 }
 
 variable "multi_az" {
-  type    = bool
-  default = false
+  type        = bool
+  default     = false
+  description = "If true, RDS creates a synchronous standby in another AZ (HA; higher cost)."
 }

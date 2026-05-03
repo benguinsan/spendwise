@@ -63,6 +63,12 @@ variable "db_name" {
   description = "Application database name on RDS"
 }
 
+variable "rds_multi_az" {
+  type        = bool
+  default     = false
+  description = "RDS Multi-AZ standby in another AZ (HA; ~2× instance cost). Requires subnets in 2+ AZs (VPC module already uses 2 AZs)."
+}
+
 variable "app_container_port" {
   type        = number
   default     = 3000
@@ -77,25 +83,25 @@ variable "alb_health_check_path" {
 variable "alb_acm_certificate_arn" {
   type        = string
   default     = ""
-  description = "ACM certificate ARN in the same region as the ALB for HTTPS. Issue/validate ACM at your DNS provider (e.g. PointHQ); no Route53 required for ALB."
+  description = "ACM certificate ARN in the same region as the ALB for HTTPS. Issue/validate ACM at your DNS provider (any registrar or DNS service)."
 }
 
-variable "enable_amplify_hosted_zone" {
-  type        = bool
-  default     = false
-  description = "Create a public Route53 hosted zone for Amplify custom-domain DNS (CNAME/verification). Not used by the ALB."
-}
-
-variable "amplify_hosted_zone_name" {
+variable "alb_public_api_base_url" {
   type        = string
   default     = ""
-  description = "FQDN for the new hosted zone when enable_amplify_hosted_zone=true (e.g. app.dev.example.com). Delegate NS from the parent zone to output amplify_route53_name_servers."
+  description = "When HTTPS is enabled: base URL for NEXT_PUBLIC_API_URL (must match ACM SAN/CN), e.g. https://api.example.com — no trailing slash. Create DNS CNAME from this host to the ALB DNS name. Leave empty to fall back to https://<alb-dns> (only works if the cert covers that hostname)."
+}
+
+variable "enable_api_cloudfront" {
+  type        = bool
+  default     = false
+  description = "If true, create CloudFront (default cert, https://dxxx.cloudfront.net) in front of the ALB and set Amplify NEXT_PUBLIC_API_URL to that URL — fixes mixed content without buying a domain. ALB can stay HTTP-only."
 }
 
 variable "ecs_backend_image_tag" {
   type        = string
-  default     = "latest"
-  description = "Tag image trên ECR cho service backend Fargate"
+  default     = ""
+  description = "Tag image ECR cho backend Fargate — đặt trong terraform.tfvars (vd. v3). default rỗng: không fallback; tránh tag latest."
 }
 
 variable "ecs_backend_environment" {

@@ -13,7 +13,11 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { ConfirmSignupDto } from './dto/confirm-signup.dto';
 import { CognitoJwtAuthGuard } from './guards/cognito-jwt-auth.guard';
-import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { MeAuthGuard } from './guards/me-auth.guard';
+// JWT nội bộ (Passport) vẫn dùng trong MeAuthGuard khi không set Cognito — không xóa JwtAuthGuard / JwtStrategy.
+// Trước đây route này chỉ JWT trực tiếp, ví dụ:
+//   @UseGuards(JwtAuthGuard)
+//   getProfile(@Request() req) { return req.user; }
 import type { Request as ExpressRequest } from 'express';
 
 @Controller('auth')
@@ -38,15 +42,16 @@ export class AuthController {
     return this.authService.confirmSignup(confirmSignupDto);
   }
 
+  /** Cognito (prod) hoặc JWT nội bộ (dev không Cognito) — xem MeAuthGuard + AuthService.getMe. */
   @Get('me')
-  @UseGuards(JwtAuthGuard)
-  getProfile(@Request() req: ExpressRequest & { user: any }) {
-    return req.user;
+  @UseGuards(MeAuthGuard)
+  getProfile(@Request() req: ExpressRequest) {
+    return this.authService.getMe(req);
   }
 
   @Get('cognito/me')
   @UseGuards(CognitoJwtAuthGuard)
-  getCognitoProfile(@Request() req: ExpressRequest & { user: unknown }) {
-    return req.user;
+  getCognitoProfile(@Request() req: ExpressRequest) {
+    return this.authService.getMe(req);
   }
 }
